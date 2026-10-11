@@ -1,0 +1,3078 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Tiny Walkers — Production Edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    body {
+      background: #000;
+      color: #e8e8f0;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 8px;
+      user-select: none;
+      overflow-x: hidden
+    }
+
+    #app {
+      width: 800px;
+      max-width: 100%
+    }
+
+    .screen {
+      display: none;
+      width: 100%
+    }
+
+    .screen.active {
+      display: block
+    }
+
+    /* Title Screen */
+    #title {
+      text-align: center;
+      padding: 40px 20px
+    }
+
+    #title h1 {
+      font-size: 48px;
+      color: #ffd86b;
+      letter-spacing: 6px;
+      text-shadow: 0 0 30px rgba(255, 216, 107, .8);
+      margin-bottom: 8px;
+      animation: glow 2s ease-in-out infinite
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        text-shadow: 0 0 30px rgba(255, 216, 107, .8)
+      }
+
+      50% {
+        text-shadow: 0 0 50px rgba(255, 216, 107, 1)
+      }
+    }
+
+    #title .tag {
+      font-size: 12px;
+      color: #8a8aa0;
+      margin-bottom: 40px;
+      letter-spacing: 2px
+    }
+
+    .menu-btn {
+      display: block;
+      width: 280px;
+      margin: 10px auto;
+      padding: 14px;
+      background: linear-gradient(180deg, #2a2a4a, #1a1a3a);
+      border: 2px solid #5a5a8a;
+      color: #e8e8f0;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 2px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .menu-btn:hover {
+      background: linear-gradient(180deg, #4a3a8a, #2a2a6a);
+      border-color: #ffd86b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(255, 216, 107, .4)
+    }
+
+    .menu-btn.primary {
+      background: linear-gradient(180deg, #6a3a9a, #4a2a7a);
+      border-color: #ffd86b
+    }
+
+    .menu-btn.primary:hover {
+      background: linear-gradient(180deg, #8a4aba, #6a3a9a)
+    }
+
+    .credits {
+      margin-top: 30px;
+      font-size: 10px;
+      color: #5a5a7a;
+      line-height: 1.8
+    }
+
+    /* Level Select */
+    #level-select {
+      padding: 20px
+    }
+
+    #level-select h2 {
+      color: #ffd86b;
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+      letter-spacing: 3px
+    }
+
+    .level-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 15px
+    }
+
+    .lv-card {
+      background: linear-gradient(180deg, #1a1a2e, #0f0f1e);
+      border: 2px solid #3a3a5a;
+      border-radius: 6px;
+      padding: 10px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+      position: relative;
+      overflow: hidden
+    }
+
+    .lv-card:hover {
+      border-color: #ffd86b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 216, 107, .3)
+    }
+
+    .lv-card.locked {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    .lv-card.completed {
+      border-color: #6bff8a
+    }
+
+    .lv-card.completed::after {
+      content: '✓';
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      color: #6bff8a;
+      font-weight: bold;
+      font-size: 14px
+    }
+
+    .lv-num {
+      font-size: 24px;
+      color: #ffd86b;
+      font-weight: bold
+    }
+
+    .lv-name {
+      font-size: 10px;
+      color: #aaa;
+      margin-top: 4px;
+      line-height: 1.3
+    }
+
+    .lv-diff {
+      font-size: 9px;
+      margin-top: 4px;
+      letter-spacing: 1px
+    }
+
+    .diff-1 {
+      color: #6bff8a
+    }
+
+    .diff-2 {
+      color: #ffd86b
+    }
+
+    .diff-3 {
+      color: #ff8844
+    }
+
+    .diff-4 {
+      color: #ff4466
+    }
+
+    .lv-preview {
+      width: 100%;
+      height: 50px;
+      background: #000;
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden
+    }
+
+    .lv-preview canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated
+    }
+
+    .section-title {
+      color: #ffd86b;
+      font-size: 12px;
+      margin: 15px 0 8px;
+      letter-spacing: 2px;
+      border-bottom: 1px solid #3a3a5a;
+      padding-bottom: 4px
+    }
+
+    /* Game Screen */
+    #hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 800px;
+      background: linear-gradient(180deg, #1a1a2e, #0f0f1e);
+      padding: 8px 14px;
+      border: 1px solid #3a3a5a;
+      border-radius: 6px 6px 0 0;
+      font-size: 12px
+    }
+
+    .hg {
+      display: flex;
+      gap: 12px;
+      align-items: center
+    }
+
+    .st {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 40px
+    }
+
+    .sl {
+      font-size: 8px;
+      color: #8a8aa0;
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    .sv {
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffd86b
+    }
+
+    .sv.d {
+      color: #ff6b6b;
+      animation: p .5s infinite
+    }
+
+    .sv.g {
+      color: #6bff8a
+    }
+
+    .sv.co {
+      color: #ff6bff
+    }
+
+    @keyframes p {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .5
+      }
+    }
+
+    #gw {
+      border: 2px solid #3a3a5a;
+      border-radius: 0;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(100, 100, 200, .3);
+      background: #000;
+      position: relative
+    }
+
+    canvas.game {
+      display: block;
+      cursor: crosshair
+    }
+
+    #mm {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 140px;
+      height: 79px;
+      border: 1px solid #3a3a5a;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, .7);
+      cursor: pointer
+    }
+
+    #lvname {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      background: rgba(0, 0, 0, .7);
+      border: 1px solid #3a3a5a;
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-size: 10px;
+      color: #ffd86b;
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    #tutorial-tip {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 20, .95);
+      border: 2px solid #ffd86b;
+      padding: 20px 30px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+      z-index: 8;
+      max-width: 400px;
+      box-shadow: 0 0 30px rgba(255, 216, 107, .5)
+    }
+
+    #tutorial-tip h3 {
+      color: #ffd86b;
+      margin-bottom: 10px;
+      font-size: 16px
+    }
+
+    #tutorial-tip p {
+      font-size: 12px;
+      color: #ccc;
+      line-height: 1.6;
+      margin-bottom: 12px
+    }
+
+    #tutorial-tip button {
+      padding: 8px 20px;
+      background: #4a3a8a;
+      border: 1px solid #ffd86b;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit
+    }
+
+    #sk {
+      display: flex;
+      gap: 3px;
+      width: 800px;
+      background: linear-gradient(180deg, #0f0f1e, #1a1a2e);
+      padding: 6px;
+      border: 1px solid #3a3a5a;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    .sb {
+      background: linear-gradient(180deg, #2a2a4a, #1a1a3a);
+      border: 2px solid #3a3a5a;
+      color: #e8e8f0;
+      padding: 4px 6px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 10px;
+      min-width: 68px;
+      transition: all .15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      position: relative
+    }
+
+    .sb:hover:not(:disabled) {
+      background: #3a3a6a;
+      border-color: #6a6aaa;
+      transform: translateY(-1px)
+    }
+
+    .sb.sel {
+      background: linear-gradient(180deg, #6a3a9a, #4a2a7a);
+      border-color: #ffd86b;
+      box-shadow: 0 0 12px rgba(255, 216, 107, .6)
+    }
+
+    .sb:disabled {
+      opacity: .3;
+      cursor: not-allowed
+    }
+
+    .sb.flash {
+      animation: flashBtn .5s
+    }
+
+    @keyframes flashBtn {
+      0% {
+        box-shadow: 0 0 0 rgba(255, 216, 107, 0)
+      }
+
+      50% {
+        box-shadow: 0 0 20px rgba(255, 216, 107, .8)
+      }
+
+      100% {
+        box-shadow: 0 0 0 rgba(255, 216, 107, 0)
+      }
+    }
+
+    .si {
+      font-size: 14px
+    }
+
+    .sn {
+      font-size: 8px
+    }
+
+    .sc {
+      font-size: 8px;
+      color: #ffd86b
+    }
+
+    .sk {
+      position: absolute;
+      top: 1px;
+      right: 2px;
+      font-size: 7px;
+      color: #6a6a8a;
+      background: rgba(0, 0, 0, .5);
+      padding: 0 2px;
+      border-radius: 2px
+    }
+
+    #ct {
+      margin-top: 8px;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center
+    }
+
+    .cb {
+      background: linear-gradient(180deg, #2a2a4a, #1a1a3a);
+      border: 1px solid #5a5a8a;
+      color: #e8e8f0;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 10px;
+      transition: all .15s
+    }
+
+    .cb:hover {
+      background: #3a3a6a;
+      transform: translateY(-1px)
+    }
+
+    .ab {
+      background: linear-gradient(180deg, #1a4a3a, #0a3a2a) !important;
+      border-color: #0fa !important
+    }
+
+    .ab:hover {
+      background: #2a6a5a !important
+    }
+
+    .gb {
+      background: linear-gradient(180deg, #4a3a1a, #3a2a0a) !important;
+      border-color: #ffd86b !important
+    }
+
+    .gb:hover {
+      background: #6a5a2a !important
+    }
+
+    .rb {
+      background: linear-gradient(180deg, #4a1a3a, #3a0a2a) !important;
+      border-color: #ff6bff !important
+    }
+
+    #msg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 20, .98);
+      border: 3px solid #ffd86b;
+      padding: 30px 45px;
+      border-radius: 10px;
+      text-align: center;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 0 50px rgba(255, 216, 107, .5);
+      max-width: 500px
+    }
+
+    #msg h2 {
+      margin-bottom: 12px;
+      font-size: 22px
+    }
+
+    #msg p {
+      margin-bottom: 14px;
+      font-size: 13px;
+      line-height: 1.6
+    }
+
+    .msg-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 15px 0;
+      padding: 10px;
+      background: rgba(0, 0, 0, .3);
+      border-radius: 4px;
+      font-size: 11px
+    }
+
+    .msg-stat {
+      display: flex;
+      justify-content: space-between
+    }
+
+    .msg-stat span {
+      color: #ffd86b;
+      font-weight: bold
+    }
+
+    .stars-display {
+      font-size: 24px;
+      margin: 10px 0;
+      letter-spacing: 4px
+    }
+
+    #pause {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, .85);
+      display: none;
+      z-index: 9;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column
+    }
+
+    #pause.on {
+      display: flex
+    }
+
+    #pause h2 {
+      color: #ffd86b;
+      font-size: 28px;
+      margin-bottom: 20px;
+      letter-spacing: 4px
+    }
+
+    #gen {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 20, .98);
+      border: 3px solid #ffd86b;
+      padding: 20px 30px;
+      border-radius: 10px;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 0 50px rgba(255, 216, 107, .5);
+      min-width: 450px;
+      max-height: 85vh;
+      overflow-y: auto
+    }
+
+    #gen h2 {
+      color: #ffd86b;
+      margin-bottom: 15px;
+      font-size: 20px;
+      text-align: center
+    }
+
+    .gr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px
+    }
+
+    .gl {
+      font-size: 11px;
+      color: #aaa;
+      min-width: 110px
+    }
+
+    .gs {
+      flex: 1;
+      background: #1a1a3a;
+      border: 1px solid #3a3a5a;
+      color: #e8e8f0;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px
+    }
+
+    .gs:focus {
+      outline: none;
+      border-color: #ffd86b
+    }
+
+    .gg {
+      display: flex;
+      gap: 6px;
+      margin-top: 15px
+    }
+
+    .gg button {
+      flex: 1
+    }
+
+    #settings {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 20, .98);
+      border: 3px solid #ffd86b;
+      padding: 25px 35px;
+      border-radius: 10px;
+      display: none;
+      z-index: 10;
+      min-width: 400px
+    }
+
+    #settings h2 {
+      color: #ffd86b;
+      margin-bottom: 20px;
+      text-align: center
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding: 8px;
+      background: rgba(0, 0, 0, .3);
+      border-radius: 4px
+    }
+
+    .setting-label {
+      font-size: 12px;
+      color: #ccc
+    }
+
+    .toggle {
+      width: 50px;
+      height: 24px;
+      background: #3a3a5a;
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .toggle.on {
+      background: #0fa
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      transition: all .2s
+    }
+
+    .toggle.on::after {
+      left: 28px
+    }
+
+    .slider {
+      width: 150px;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #3a3a5a;
+      border-radius: 2px;
+      outline: none
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #ffd86b;
+      border-radius: 50%;
+      cursor: pointer
+    }
+
+    #sb {
+      width: 800px;
+      background: rgba(0, 0, 0, .3);
+      padding: 5px 14px;
+      border-radius: 5px;
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #8a8aa0
+    }
+
+    .si2 span {
+      color: #ffd86b;
+      font-weight: bold
+    }
+
+    .hint {
+      font-size: 10px;
+      color: #5a5a7a;
+      margin-top: 6px;
+      text-align: center;
+      max-width: 800px
+    }
+
+    #spd {
+      display: flex;
+      gap: 3px;
+      background: rgba(0, 0, 0, .3);
+      padding: 3px;
+      border-radius: 4px
+    }
+
+    .spb {
+      background: #2a2a4a;
+      border: 1px solid #3a3a5a;
+      color: #e8e8f0;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 10px
+    }
+
+    .spb:hover {
+      background: #3a3a6a
+    }
+
+    .spb.on {
+      background: #5a3a8a;
+      border-color: #ffd86b
+    }
+
+    #rewind-bar {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 120px;
+      height: 6px;
+      background: rgba(0, 0, 0, .5);
+      border: 1px solid #3a3a5a;
+      border-radius: 3px;
+      overflow: hidden
+    }
+
+    #rewind-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6bff, #ffd86b);
+      width: 0%;
+      transition: width .1s
+    }
+
+    #toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 10, 20, .95);
+      border: 2px solid #ffd86b;
+      padding: 12px 24px;
+      border-radius: 8px;
+      z-index: 100;
+      display: none;
+      animation: slideDown .3s;
+      box-shadow: 0 0 20px rgba(255, 216, 107, .5);
+      font-size: 12px;
+      color: #ffd86b
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translate(-50%, -30px);
+        opacity: 0
+      }
+
+      to {
+        transform: translate(-50%, 0);
+        opacity: 1
+      }
+    }
+
+    #help {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 10, 20, .98);
+      border: 3px solid #ffd86b;
+      padding: 25px;
+      border-radius: 10px;
+      display: none;
+      z-index: 10;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto
+    }
+
+    #help h2 {
+      color: #ffd86b;
+      margin-bottom: 15px;
+      text-align: center
+    }
+
+    .help-section {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: rgba(0, 0, 0, .3);
+      border-radius: 4px
+    }
+
+    .help-section h3 {
+      color: #ffd86b;
+      font-size: 12px;
+      margin-bottom: 8px;
+      letter-spacing: 1px
+    }
+
+    .help-section p {
+      font-size: 11px;
+      color: #ccc;
+      line-height: 1.6
+    }
+
+    .key {
+      display: inline-block;
+      background: #2a2a4a;
+      border: 1px solid #5a5a8a;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      color: #ffd86b;
+      margin: 0 2px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- TITLE SCREEN -->
+    <div id="title" class="screen active">
+      <h1>TINY WALKERS</h1>
+      <div class="tag">◆ A PUZZLE OF MINDLESS HEROES ◆</div>
+      <button class="menu-btn primary" onclick="startCampaign()">▶ CAMPAIGN</button>
+      <button class="menu-btn" onclick="showScreen('level-select')">📋 LEVEL SELECT</button>
+      <button class="menu-btn" onclick="openGen()">🎲 ENDLESS MODE</button>
+      <button class="menu-btn" onclick="showHelp()">❓ HOW TO PLAY</button>
+      <button class="menu-btn" onclick="showSettings()">⚙ SETTINGS</button>
+      <div class="credits">
+        Guide the walkers. Save the many.<br>
+        Assign skills. Solve the puzzles.<br><br>
+        <span style="color:#ffd86b">v2.0 — Production Edition</span>
+      </div>
+    </div>
+
+    <!-- LEVEL SELECT -->
+    <div id="level-select" class="screen">
+      <h2>◆ LEVEL SELECT ◆</h2>
+      <div class="section-title">CAMPAIGN</div>
+      <div class="level-grid" id="campaign-grid"></div>
+      <div class="section-title">CHALLENGES</div>
+      <div class="level-grid" id="challenge-grid"></div>
+      <div style="text-align:center;margin-top:15px">
+        <button class="cb" onclick="showScreen('title')">← BACK</button>
+      </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="game" class="screen">
+      <div id="hud">
+        <div class="hg">
+          <div class="st">
+            <div class="sl">Level</div>
+            <div class="sv" id="h-lv">1</div>
+          </div>
+          <div class="st">
+            <div class="sl">Time</div>
+            <div class="sv" id="h-tm">3:00</div>
+          </div>
+          <div class="st">
+            <div class="sl">Speed</div>
+            <div id="spd">
+              <button class="spb" data-s="0.5">½×</button>
+              <button class="spb on" data-s="1">1×</button>
+              <button class="spb" data-s="2">2×</button>
+              <button class="spb" data-s="4">4×</button>
+            </div>
+          </div>
+        </div>
+        <div class="hg">
+          <div class="st">
+            <div class="sl">Saved</div>
+            <div class="sv g" id="h-sv">0</div>
+          </div>
+          <div class="st">
+            <div class="sl">Need</div>
+            <div class="sv" id="h-nd">0</div>
+          </div>
+          <div class="st">
+            <div class="sl">Combo</div>
+            <div class="sv co" id="h-co">0</div>
+          </div>
+        </div>
+        <div class="hg">
+          <div class="st">
+            <div class="sl">Queue</div>
+            <div class="sv" id="h-q">0</div>
+          </div>
+          <div class="st">
+            <div class="sl">Lost</div>
+            <div class="sv d" id="h-lo">0</div>
+          </div>
+          <div class="st">
+            <div class="sl">Stars</div>
+            <div class="sv" id="h-st" style="color:#ffd86b">0</div>
+          </div>
+        </div>
+      </div>
+      <div id="gw">
+        <canvas id="cv" class="game" width="800" height="450"></canvas>
+        <canvas id="mm" width="140" height="79"></canvas>
+        <div id="lvname"></div>
+        <div id="tutorial-tip">
+          <h3 id="tt-title"></h3>
+          <p id="tt-body"></p><button onclick="closeTutorial()">Got it!</button>
+        </div>
+        <div id="rewind-bar">
+          <div id="rewind-fill"></div>
+        </div>
+        <div id="pause">
+          <h2>⏸ PAUSED</h2>
+          <button class="menu-btn" onclick="togglePause()">▶ RESUME</button>
+          <button class="menu-btn" onclick="restartLevel()">↻ RESTART</button>
+          <button class="menu-btn" onclick="quitToMenu()">⏏ QUIT TO MENU</button>
+        </div>
+        <div id="msg">
+          <h2 id="mt">T</h2>
+          <p id="mb">B</p>
+          <div id="msg-extra"></div><button class="menu-btn" id="mbtn">OK</button>
+        </div>
+        <div id="gen">
+          <h2>🎲 Endless Mode</h2>
+          <div class="gr"><span class="gl">Algorithm:</span>
+            <select class="gs" id="g-algo">
+              <option value="puzzleFirst">🧩 Puzzle-First</option>
+              <option value="bsp">🏛️ BSP Dungeon</option>
+              <option value="drunkard">🍺 Drunkard's Walk</option>
+              <option value="perlin">🏔️ Perlin Hills</option>
+              <option value="multipath">🔀 Multi-Path</option>
+              <option value="gauntlet">⚔️ Vertical Gauntlet</option>
+              <option value="islands">🏝️ Island Hopping</option>
+              <option value="chaos">🎲 Chaos</option>
+            </select>
+          </div>
+          <div class="gr"><span class="gl">Difficulty:</span>
+            <select class="gs" id="g-diff">
+              <option value="1">Easy</option>
+              <option value="2" selected>Medium</option>
+              <option value="3">Hard</option>
+              <option value="4">Insane</option>
+            </select>
+          </div>
+          <div class="gr"><span class="gl">Theme:</span>
+            <select class="gs" id="g-theme">
+              <option value="default">Default</option>
+              <option value="desert">Desert</option>
+              <option value="ice">Ice</option>
+              <option value="lava">Lava</option>
+              <option value="forest">Forest</option>
+            </select>
+          </div>
+          <div class="gr"><span class="gl">Seed:</span><input class="gs" id="g-seed" type="number" value="12345"></div>
+          <div class="gr"><span class="gl">Walkers:</span><input class="gs" id="g-count" type="number" value="20"
+              min="5" max="50"></div>
+          <div class="gg"><button class="cb gb" onclick="generateLevel()">🎲 Generate</button><button class="cb"
+              onclick="closeGen()">Cancel</button></div>
+        </div>
+        <div id="help">
+          <h2>❓ How To Play</h2>
+          <div class="help-section">
+            <h3>OBJECTIVE</h3>
+            <p>Guide mindless walkers from the yellow spawn arrow to the green exit door. Save the required number to
+              complete each level.</p>
+          </div>
+          <div class="help-section">
+            <h3>CONTROLS</h3>
+            <p>
+              <span class="key">Click</span> skill button, then click a walker to assign<br>
+              <span class="key">Right-Click</span> walker to undo last assignment<br>
+              <span class="key">1-9, 0, A-H</span> select skills directly<br>
+              <span class="key">P</span> pause · <span class="key">R</span> rewind · <span class="key">Esc</span>
+              deselect<br>
+              <span class="key">Space</span> pause/resume
+            </p>
+          </div>
+          <div class="help-section">
+            <h3>SKILLS</h3>
+            <p>
+              <strong style="color:#ff6b9d">☂ Floater</strong> — Survives any fall (umbrella deploys)<br>
+              <strong style="color:#ff3333">⛔ Blocker</strong> — Makes other walkers turn around<br>
+              <strong style="color:#c08040">🧱 Builder</strong> — Builds 12-step diagonal stairs<br>
+              <strong style="color:#aaa">⛏ Basher</strong> — Digs horizontally through dirt<br>
+              <strong style="color:#8b6f47">⬇ Digger</strong> — Digs straight down<br>
+              <strong style="color:#ffd86b">🧗 Climber</strong> — Scales vertical walls<br>
+              <strong style="color:#ff6b4a">💣 Exploder</strong> — Timed 5s explosion<br>
+              <strong style="color:#4488ff">🏊 Swimmer</strong> — Survives water<br>
+              <strong style="color:#0f0">🦘 Jumper</strong> — Leaps over small gaps<br>
+              <strong style="color:#9d6bff">🪂 Glider</strong> — Floats and drifts while falling<br>
+              <strong style="color:#f80">🔥 Firewalker</strong> — Immune to fire<br>
+              <strong style="color:#ccc">🛡️ Spikewalker</strong> — Immune to spikes<br>
+              <strong style="color:#fff">👻 Ghost</strong> — Phases through walls briefly<br>
+              <strong style="color:#f80">🚀 Rocket</strong> — Launches upward<br>
+              <strong style="color:#ff6bff">🔀 Splitter</strong> — Creates a clone<br>
+              <strong style="color:#8b4513">🌉 Bridge</strong> — Builds horizontal platform
+            </p>
+          </div>
+          <div class="help-section">
+            <h3>TERRAIN</h3>
+            <p>
+              <strong style="color:#8b6f47">Brown</strong> — Dirt (diggable/bashable)<br>
+              <strong style="color:#888">Gray</strong> — Steel (indestructible)<br>
+              <strong style="color:#ff6b4a">Orange</strong> — Fire (deadly)<br>
+              <strong style="color:#ccc">Silver</strong> — Spikes (deadly)<br>
+              <strong style="color:#4488ff">Blue</strong> — Water (drowns non-swimmers)<br>
+              <strong style="color:#ffd86b">Gold</strong> — Stars (collect for bonus)
+            </p>
+          </div>
+          <button class="menu-btn" onclick="closeHelp()" style="margin-top:15px">CLOSE</button>
+        </div>
+      </div>
+      <div id="sk"></div>
+      <div id="ct">
+        <button class="cb" id="b-pause">⏸ Pause</button>
+        <button class="cb rb" id="b-rewind">⏪ Rewind</button>
+        <button class="cb" id="b-undo">↶ Undo</button>
+        <button class="cb" id="b-nuke">💣 Nuke</button>
+        <button class="cb" id="b-restart">↻ Restart</button>
+        <button class="cb" id="b-menu">⏏ Menu</button>
+        <button class="cb" id="b-help">❓ Help</button>
+        <button class="cb" id="b-mute">🔊</button>
+      </div>
+      <div id="sb">
+        <div class="si2">Total Saved: <span id="s-sv">0</span></div>
+        <div class="si2">Stars: <span id="s-st">0</span></div>
+        <div class="si2">Levels: <span id="s-lv">0</span></div>
+      </div>
+      <div class="hint">Click skill → click walker · Right-click to undo · Press <span style="color:#ffd86b">H</span>
+        for help</div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settings-screen" class="screen">
+      <h2 style="color:#ffd86b;text-align:center;margin:20px 0">⚙ SETTINGS</h2>
+      <div style="max-width:500px;margin:0 auto">
+        <div class="setting-row"><span class="setting-label">Master Volume</span><input type="range" class="slider"
+            id="set-vol" min="0" max="100" value="30"></div>
+        <div class="setting-row"><span class="setting-label">Sound Effects</span>
+          <div class="toggle on" id="set-sfx"></div>
+        </div>
+        <div class="setting-row"><span class="setting-label">Screen Shake</span>
+          <div class="toggle on" id="set-shake"></div>
+        </div>
+        <div class="setting-row"><span class="setting-label">Particles</span>
+          <div class="toggle on" id="set-particles"></div>
+        </div>
+        <div class="setting-row"><span class="setting-label">Walker Trails</span>
+          <div class="toggle on" id="set-trails"></div>
+        </div>
+        <div class="setting-row"><span class="setting-label">Show Tutorials</span>
+          <div class="toggle on" id="set-tutorials"></div>
+        </div>
+        <div style="text-align:center;margin-top:20px">
+          <button class="menu-btn" onclick="showScreen('title')">← BACK</button>
+          <button class="menu-btn" onclick="resetProgress()" style="background:#4a1a1a;border-color:#ff6b6b">🗑 Reset
+            Progress</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="toast"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      // ============================================
+      // CONSTANTS & SETUP
+      // ============================================
+      const cv = document.getElementById('cv'), c = cv.getContext('2d');
+      const mc = document.getElementById('mm'), mx = mc.getContext('2d');
+      const W = 800, H = 450;
+      const T = new Uint8Array(W * H);
+      const gT = (x, y) => (x >= 0 && x < W && y >= 0 && y < H) ? T[ y * W + x ] : 2;
+      const sT = (x, y, v) => { if (x >= 0 && x < W && y >= 0 && y < H) T[ y * W + x ] = v };
+      const solid = (x, y) => { const v = gT(x, y); return v === 1 || v === 2 };
+      const fire = (x, y) => gT(x, y) === 5;
+      const spike = (x, y) => gT(x, y) === 6;
+      const water = (x, y) => gT(x, y) === 10;
+      const ice = (x, y) => gT(x, y) === 11;
+      const wind = (x, y) => gT(x, y) === 12;
+
+      const THEMES = {
+        default: { g1: [ 110, 70, 40 ], g2: [ 140, 90, 50 ], s: [ 140, 140, 160 ], sky: [ '#1a1a3e', '#2a2a5e' ] },
+        desert: { g1: [ 180, 150, 80 ], g2: [ 210, 180, 110 ], s: [ 160, 140, 120 ], sky: [ '#3a2a1e', '#5a3a2e' ] },
+        ice: { g1: [ 100, 150, 200 ], g2: [ 140, 190, 230 ], s: [ 180, 200, 220 ], sky: [ '#1a2a4e', '#2a4a6e' ] },
+        lava: { g1: [ 100, 30, 20 ], g2: [ 140, 50, 30 ], s: [ 80, 80, 80 ], sky: [ '#2a0a0a', '#4a1a1a' ] },
+        forest: { g1: [ 50, 100, 50 ], g2: [ 80, 130, 70 ], s: [ 100, 100, 100 ], sky: [ '#0a2a1a', '#1a4a2a' ] }
+      };
+      let currentTheme = 'default';
+
+      const SK = {
+        floater: { i: '☂', n: 'Floater', d: 'Survives falls', k: '1', c: '#ff6b9d' },
+        blocker: { i: '⛔', n: 'Blocker', d: 'Turns walkers', k: '2', c: '#ff3333' },
+        builder: { i: '🧱', n: 'Builder', d: 'Builds stairs', k: '3', c: '#c08040' },
+        basher: { i: '⛏', n: 'Basher', d: 'Digs horizontal', k: '4', c: '#aaaaaa' },
+        digger: { i: '⬇', n: 'Digger', d: 'Digs down', k: '5', c: '#8b6f47' },
+        climber: { i: '🧗', n: 'Climber', d: 'Climbs walls', k: '6', c: '#ffd86b' },
+        exploder: { i: '💣', n: 'Exploder', d: 'Boom in 5s', k: '7', c: '#ff6b4a' },
+        swimmer: { i: '🏊', n: 'Swimmer', d: 'Survives water', k: '8', c: '#4488ff' },
+        jumper: { i: '🦘', n: 'Jumper', d: 'Jumps gaps', k: '9', c: '#00ff00' },
+        glider: { i: '🪂', n: 'Glider', d: 'Floats & drifts', k: '0', c: '#9d6bff' },
+        firewalker: { i: '🔥', n: 'Firewalk', d: 'Immune to fire', k: 'A', c: '#ff8800' },
+        spikewalker: { i: '🛡️', n: 'Spikewalk', d: 'Immune to spikes', k: 'S', c: '#cccccc' },
+        ghost: { i: '👻', n: 'Ghost', d: 'Phase walls', k: 'D', c: '#ffffff' },
+        rocket: { i: '🚀', n: 'Rocket', d: 'Launches up', k: 'F', c: '#ff8800' },
+        splitter: { i: '🔀', n: 'Splitter', d: 'Creates clone', k: 'G', c: '#ff6bff' },
+        bridge: { i: '🌉', n: 'Bridge', d: 'Builds horizontal', k: 'H', c: '#8b4513' }
+      };
+
+      // ============================================
+      // SETTINGS & PERSISTENCE
+      // ============================================
+      const SETTINGS = {
+        vol: 0.3, sfx: true, shake: true, particles: true, trails: true, tutorials: true
+      };
+      const PROGRESS = {
+        totalSaved: 0, totalStars: 0, levelsCompleted: [], bestTimes: {}, maxCombo: 0
+      };
+
+      function loadAll() {
+        try
+        {
+          const s = JSON.parse(localStorage.getItem('tw_settings'));
+          if (s) Object.assign(SETTINGS, s);
+          const p = JSON.parse(localStorage.getItem('tw_progress'));
+          if (p) Object.assign(PROGRESS, p);
+        } catch (e) { }
+      }
+      function saveSettings() { try { localStorage.setItem('tw_settings', JSON.stringify(SETTINGS)) } catch (e) { } }
+      function saveProgress() { try { localStorage.setItem('tw_progress', JSON.stringify(PROGRESS)) } catch (e) { } }
+
+      // ============================================
+      // AUDIO
+      // ============================================
+      let actx = null;
+      function initAudio() { if (!actx) try { actx = new (window.AudioContext || window.webkitAudioContext)() } catch (e) { } }
+      function snd(f, d, t = 'sine', v = 0.2) {
+        if (!SETTINGS.sfx || !actx) return;
+        try
+        {
+          const o = actx.createOscillator(), g = actx.createGain();
+          o.connect(g); g.connect(actx.destination);
+          o.frequency.value = f; o.type = t;
+          g.gain.setValueAtTime(SETTINGS.vol * v, actx.currentTime);
+          g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + d);
+          o.start(); o.stop(actx.currentTime + d);
+        } catch (e) { }
+      }
+      function sndAssign() { snd(440, .08, 'square') }
+      function sndSave() { snd(880, .15); setTimeout(() => snd(1100, .15), 80) }
+      function sndDeath() { snd(180, .25, 'sawtooth') }
+      function sndStar() { snd(660, .1); setTimeout(() => snd(990, .12), 40) }
+      function sndBuild() { snd(300, .05, 'square') }
+      function sndBash() { snd(150, .08, 'sawtooth') }
+      function sndExplode() { snd(80, .4, 'sawtooth', .4) }
+      function sndJump() { snd(600, .1, 'triangle') }
+      function sndRocket() { snd(400, .3, 'sawtooth') }
+      function sndSplit() { snd(800, .15, 'square'); setTimeout(() => snd(1000, .15, 'square'), 50) }
+      function sndGhost() { snd(200, .3, 'sine') }
+
+      // ============================================
+      // LEVEL DEFINITIONS (TUTORIAL CAMPAIGN)
+      // ============================================
+      const CAMPAIGN = [
+        {
+          name: "First Steps", diff: 1,
+          brief: "Welcome! Build a bridge across the gap using Builders.",
+          tutorial: { title: "🧱 The Builder", body: "Click the Builder skill (or press 3), then click a walker to assign it. Builders create stairs to cross gaps!" },
+          time: 180, total: 8, needed: 5, rate: 60,
+          sk: { floater: 0, blocker: 0, builder: 10, basher: 0, digger: 0, climber: 0, exploder: 0, swimmer: 0, jumper: 0, glider: 0, firewalker: 0, spikewalker: 0, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 320; y < H; y++)sT(x, y, 1);
+            for (let x = 340; x < 480; x++)for (let y = 320; y < H; y++)sT(x, y, 0);
+            for (let x = 30; x < 150; x++)for (let y = 160; y < 170; y++)sT(x, y, 1);
+            for (let x = 600; x < 740; x++)for (let y = 260; y < 270; y++)sT(x, y, 1);
+            sT(410, 300, 7);
+            return { spawn: { x: 90, y: 150 }, exit: { x: 670, y: 250 } };
+          }
+        },
+        {
+          name: "The Deep Drop", diff: 1,
+          brief: "Long falls kill walkers! Give them Floaters to survive.",
+          tutorial: { title: "☂ The Floater", body: "Floaters deploy umbrellas when falling, surviving any height. Assign them BEFORE walkers hit the ground!" },
+          time: 180, total: 12, needed: 7, rate: 55,
+          sk: { floater: 10, blocker: 0, builder: 2, basher: 0, digger: 0, climber: 0, exploder: 0, swimmer: 0, jumper: 0, glider: 0, firewalker: 0, spikewalker: 0, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 80; y < 90; y++)sT(x, y, 1);
+            for (let x = 0; x < W; x++)for (let y = 410; y < H; y++)sT(x, y, 1);
+            for (let x = 180; x < 250; x++)for (let y = 250; y < 260; y++)sT(x, y, 1);
+            for (let x = 500; x < 570; x++)for (let y = 250; y < 260; y++)sT(x, y, 1);
+            sT(215, 230, 7); sT(535, 230, 7);
+            return { spawn: { x: 50, y: 70 }, exit: { x: 720, y: 400 } };
+          }
+        },
+        {
+          name: "The Wall", diff: 2,
+          brief: "A tall wall blocks the path. Bash through or climb over!",
+          tutorial: { title: "⛏ The Basher & 🧗 Climber", body: "Bashers dig horizontally through dirt. Climbers scale vertical walls. Choose your strategy!" },
+          time: 210, total: 15, needed: 9, rate: 55,
+          sk: { floater: 2, blocker: 1, builder: 4, basher: 8, digger: 0, climber: 4, exploder: 2, swimmer: 0, jumper: 0, glider: 0, firewalker: 0, spikewalker: 0, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 380; y < H; y++)sT(x, y, 1);
+            for (let x = 400; x < 425; x++)for (let y = 120; y < 380; y++)sT(x, y, 1);
+            for (let x = 425; x < 500; x++)for (let y = 120; y < 130; y++)sT(x, y, 1);
+            for (let x = 30; x < 170; x++)for (let y = 280; y < 290; y++)sT(x, y, 1);
+            sT(460, 110, 7);
+            return { spawn: { x: 100, y: 270 }, exit: { x: 700, y: 370 } };
+          }
+        },
+        {
+          name: "Water World", diff: 2,
+          brief: "Water drowns walkers! Swimmers can cross safely.",
+          tutorial: { title: "🏊 The Swimmer", body: "Water is deadly to normal walkers. Swimmers can cross pools safely. Watch for the blue tiles!" },
+          time: 200, total: 15, needed: 10, rate: 50,
+          sk: { floater: 3, blocker: 1, builder: 4, basher: 0, digger: 0, climber: 0, exploder: 0, swimmer: 10, jumper: 0, glider: 0, firewalker: 0, spikewalker: 0, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 380; y < H; y++)sT(x, y, 1);
+            for (let x = 200; x < 290; x++)for (let y = 370; y < 380; y++)sT(x, y, 10);
+            for (let x = 460; x < 550; x++)for (let y = 370; y < 380; y++)sT(x, y, 10);
+            for (let x = 30; x < 160; x++)for (let y = 280; y < 290; y++)sT(x, y, 1);
+            sT(320, 360, 7); sT(600, 360, 7);
+            return { spawn: { x: 95, y: 270 }, exit: { x: 730, y: 370 } };
+          }
+        },
+        {
+          name: "Fire & Spikes", diff: 3,
+          brief: "Fire burns. Spikes pierce. Specialized walkers survive!",
+          tutorial: { title: "🔥🛡️ Immunity Skills", body: "Firewalkers survive fire. Spikewalkers survive spikes. Assign them BEFORE walkers reach hazards!" },
+          time: 220, total: 18, needed: 12, rate: 45,
+          sk: { floater: 2, blocker: 1, builder: 4, basher: 2, digger: 0, climber: 2, exploder: 2, swimmer: 2, jumper: 0, glider: 0, firewalker: 8, spikewalker: 8, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 380; y < H; y++)sT(x, y, 1);
+            for (let x = 180; x < 250; x++)for (let y = 375; y < 380; y++)sT(x, y, 5);
+            for (let x = 350; x < 420; x++)for (let y = 375; y < 380; y++)sT(x, y, 6);
+            for (let x = 520; x < 590; x++)for (let y = 375; y < 380; y++)sT(x, y, 5);
+            for (let x = 30; x < 150; x++)for (let y = 280; y < 290; y++)sT(x, y, 1);
+            sT(300, 360, 7); sT(480, 360, 7);
+            return { spawn: { x: 90, y: 270 }, exit: { x: 730, y: 370 } };
+          }
+        },
+        {
+          name: "The Gauntlet", diff: 3,
+          brief: "Steel walls with a diggable plug. Think carefully!",
+          tutorial: { title: "⬇ The Digger & 💣 Exploder", body: "Diggers dig straight down. Exploders create big holes after 5 seconds. Use them to bypass obstacles!" },
+          time: 240, total: 20, needed: 12, rate: 42,
+          sk: { floater: 5, blocker: 2, builder: 8, basher: 4, digger: 6, climber: 2, exploder: 3, swimmer: 2, jumper: 0, glider: 0, firewalker: 2, spikewalker: 2, ghost: 0, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 400; y < H; y++)sT(x, y, 1);
+            for (let x = 0; x < W; x++)for (let y = 0; y < 30; y++)sT(x, y, 2);
+            for (let x = 300; x < 325; x++)for (let y = 30; y < 370; y++)sT(x, y, 2);
+            for (let x = 300; x < 325; x++)for (let y = 370; y < 400; y++)sT(x, y, 1);
+            for (let x = 325; x < 520; x++)for (let y = 200; y < 210; y++)sT(x, y, 1);
+            for (let x = 400; x < 460; x++)for (let y = 200; y < 210; y++)sT(x, y, 0);
+            for (let x = 600; x < 750; x++)for (let y = 310; y < 320; y++)sT(x, y, 1);
+            for (let x = 345; x < 375; x++)for (let y = 195; y < 200; y++)sT(x, y, 5);
+            sT(430, 180, 7); sT(680, 290, 7);
+            return { spawn: { x: 60, y: 20 }, exit: { x: 680, y: 300 } };
+          }
+        },
+        {
+          name: "Ghost Protocol", diff: 4,
+          brief: "Phase through walls with Ghost skill!",
+          tutorial: { title: "👻 The Ghost", body: "Ghost skill lets walkers phase through walls for 3 seconds. Use it to bypass impossible barriers!" },
+          time: 200, total: 15, needed: 10, rate: 50,
+          sk: { floater: 2, blocker: 1, builder: 2, basher: 0, digger: 0, climber: 0, exploder: 0, swimmer: 0, jumper: 0, glider: 0, firewalker: 0, spikewalker: 0, ghost: 10, rocket: 0, splitter: 0, bridge: 0 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 380; y < H; y++)sT(x, y, 1);
+            // Multiple steel walls
+            for (let x = 200; x < 220; x++)for (let y = 100; y < 380; y++)sT(x, y, 2);
+            for (let x = 400; x < 420; x++)for (let y = 100; y < 380; y++)sT(x, y, 2);
+            for (let x = 600; x < 620; x++)for (let y = 100; y < 380; y++)sT(x, y, 2);
+            for (let x = 30; x < 150; x++)for (let y = 280; y < 290; y++)sT(x, y, 1);
+            sT(300, 360, 7); sT(500, 360, 7);
+            return { spawn: { x: 90, y: 270 }, exit: { x: 730, y: 370 } };
+          }
+        },
+        {
+          name: "The Final Descent", diff: 4,
+          brief: "Everything combined. Good luck!",
+          tutorial: { title: "🎓 Final Challenge", body: "Use all your skills! Combos multiply your score. Save as many walkers as possible!" },
+          time: 300, total: 25, needed: 16, rate: 38,
+          sk: { floater: 8, blocker: 3, builder: 10, basher: 6, digger: 4, climber: 4, exploder: 4, swimmer: 5, jumper: 3, glider: 3, firewalker: 4, spikewalker: 4, ghost: 2, rocket: 2, splitter: 2, bridge: 2 },
+          build() {
+            for (let x = 0; x < W; x++)for (let y = 420; y < H; y++)sT(x, y, 1);
+            for (let x = 30; x < 180; x++)for (let y = 80; y < 90; y++)sT(x, y, 1);
+            for (let x = 250; x < 400; x++)for (let y = 180; y < 190; y++)sT(x, y, 1);
+            for (let x = 500; x < 650; x++)for (let y = 280; y < 290; y++)sT(x, y, 1);
+            for (let x = 220; x < 240; x++)for (let y = 100; y < 260; y++)sT(x, y, 1);
+            for (let x = 470; x < 490; x++)for (let y = 200; y < 360; y++)sT(x, y, 1);
+            for (let x = 130; x < 170; x++)for (let y = 415; y < 420; y++)sT(x, y, 5);
+            for (let x = 330; x < 370; x++)for (let y = 415; y < 420; y++)sT(x, y, 6);
+            for (let x = 550; x < 600; x++)for (let y = 415; y < 420; y++)sT(x, y, 10);
+            sT(100, 60, 7); sT(330, 160, 7); sT(570, 260, 7); sT(700, 400, 7);
+            return { spawn: { x: 100, y: 70 }, exit: { x: 720, y: 410 } };
+          }
+        }
+      ];
+
+      // ============================================
+      // GAME STATE
+      // ============================================
+      const S = {
+        lv: 0, lems: [], parts: [], spT: 0, spawned: 0, saved: 0, lost: 0, stars: 0,
+        time: 0, paused: false, over: false, selSk: null, skC: {}, exitP: null, spawnP: null,
+        total: 0, need: 0, rate: 60, speed: 1, undo: [], hlLem: null,
+        shake: 0, combo: 0, maxCombo: 0,
+        curLv: null, isProc: false, weather: 0, windDir: 0,
+        rewindBuf: [], rewinding: false, rewindT: 0,
+        flashT: 0, flashColor: '#fff',
+        skillFlash: {}, // per-skill flash timers
+        currentLevelIdx: -1,
+        levelStartTime: 0
+      };
+
+      // ============================================
+      // SCREEN MANAGEMENT
+      // ============================================
+      function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if (id === 'level-select') buildLevelSelect();
+      }
+      window.showScreen = showScreen;
+
+      function showToast(msg, duration = 2000) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.style.display = 'none', duration);
+      }
+
+      function buildLevelSelect() {
+        const cg = document.getElementById('campaign-grid');
+        const chg = document.getElementById('challenge-grid');
+        cg.innerHTML = ''; chg.innerHTML = '';
+
+        CAMPAIGN.forEach((lv, i) => {
+          const card = document.createElement('div');
+          card.className = 'lv-card';
+          const completed = PROGRESS.levelsCompleted.includes(i);
+          if (completed) card.classList.add('completed');
+          card.innerHTML = `
+      <div class="lv-num">${i + 1}</div>
+      <div class="lv-name">${lv.name}</div>
+      <div class="lv-diff diff-${lv.diff}">${'★'.repeat(lv.diff)}${'☆'.repeat(4 - lv.diff)}</div>
+      <div class="lv-preview"><canvas width="120" height="50" id="pv-${i}"></canvas></div>
+    `;
+          card.onclick = () => startLevel(i);
+          cg.appendChild(card);
+        });
+
+        // Challenge = endless mode shortcuts
+        const challenges = [
+          { name: '🎲 Random', algo: 'puzzleFirst', diff: 2 },
+          { name: '🏛️ Dungeon', algo: 'bsp', diff: 3 },
+          { name: '🏔️ Mountains', algo: 'perlin', diff: 3 },
+          { name: '🎲 Chaos', algo: 'chaos', diff: 4 }
+        ];
+        challenges.forEach(ch => {
+          const card = document.createElement('div');
+          card.className = 'lv-card';
+          card.innerHTML = `<div class="lv-num" style="font-size:18px">${ch.name}</div><div class="lv-name">Endless · ${ch.diff <= 2 ? 'Easy' : ch.diff === 3 ? 'Hard' : 'Insane'}</div>`;
+          card.onclick = () => {
+            document.getElementById('g-algo').value = ch.algo;
+            document.getElementById('g-diff').value = ch.diff;
+            openGen();
+          };
+          chg.appendChild(card);
+        });
+
+        // Render previews after DOM update
+        setTimeout(() => {
+          CAMPAIGN.forEach((lv, i) => {
+            const pv = document.getElementById(`pv-${i}`);
+            if (pv) renderPreview(pv, lv);
+          });
+        }, 50);
+      }
+
+      function renderPreview(canvas, lv) {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        // Save current terrain
+        const saved = new Uint8Array(T);
+        T.fill(0);
+        const result = lv.build();
+        const th = THEMES.default;
+        // Draw terrain scaled down
+        const sx = w / W, sy = h / H;
+        for (let y = 0; y < H; y += 4)
+        {
+          for (let x = 0; x < W; x += 4)
+          {
+            const t = gT(x, y);
+            if (t === 1) { ctx.fillStyle = `rgb(${th.g1[ 0 ]},${th.g1[ 1 ]},${th.g1[ 2 ]})`; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 2) { ctx.fillStyle = '#888'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 3) { ctx.fillStyle = '#6bff8a'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 5) { ctx.fillStyle = '#ff6b4a'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 6) { ctx.fillStyle = '#ccc'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 10) { ctx.fillStyle = '#4488ff'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+            else if (t === 7) { ctx.fillStyle = '#ffd86b'; ctx.fillRect(x * sx, y * sy, 4 * sx, 4 * sy) }
+          }
+        }
+        // Restore
+        T.set(saved);
+      }
+
+      // ============================================
+      // LEVEL LOADING
+      // ============================================
+      function startCampaign() {
+        // Find first uncompleted level, or start at 0
+        let startIdx = 0;
+        for (let i = 0; i < CAMPAIGN.length; i++)
+        {
+          if (!PROGRESS.levelsCompleted.includes(i)) { startIdx = i; break }
+        }
+        startLevel(startIdx);
+      }
+      window.startCampaign = startCampaign;
+
+      function startLevel(idx) {
+        if (idx < 0 || idx >= CAMPAIGN.length) return;
+        S.currentLevelIdx = idx;
+        S.isProc = false;
+        loadLevelData(CAMPAIGN[ idx ]);
+        showScreen('game');
+        // Show tutorial if enabled
+        if (SETTINGS.tutorials && CAMPAIGN[ idx ].tutorial && !PROGRESS.levelsCompleted.includes(idx))
+        {
+          setTimeout(() => showTutorial(CAMPAIGN[ idx ].tutorial), 500);
+        }
+      }
+      window.startLevel = startLevel;
+
+      function loadLevelData(lv) {
+        T.fill(0);
+        S.lems = []; S.parts = []; S.spT = 0; S.spawned = 0;
+        S.saved = 0; S.lost = 0; S.stars = 0; S.over = false; S.selSk = null;
+        S.undo = []; S.hlLem = null; S.shake = 0;
+        S.combo = 0; S.rewindBuf = []; S.rewinding = false;
+        S.flashT = 0; S.skillFlash = {};
+        S.paused = false;
+        currentTheme = 'default';
+
+        const result = lv.build();
+        S.total = lv.total; S.need = lv.needed; S.rate = lv.rate;
+        S.time = lv.time * 60;
+        S.skC = { ...lv.sk };
+        S.spawnP = result.spawn;
+        S.exitP = result.exit;
+        S.curLv = lv;
+        S.levelStartTime = Date.now();
+
+        // Weather
+        S.weather = 0; // no weather in campaign
+        S.windDir = 1;
+
+        // Draw exit door
+        for (let dy = -18; dy <= 0; dy++)for (let dx = -6; dx <= 6; dx++)
+        {
+          const tx = S.exitP.x + dx, ty = S.exitP.y + dy;
+          if (tx >= 0 && tx < W && ty >= 0 && ty < H && gT(tx, ty) !== 7) sT(tx, ty, 3);
+        }
+
+        updHUD(); updSk();
+        const lvIdx = S.currentLevelIdx;
+        document.getElementById('h-lv').textContent = lvIdx >= 0 ? lvIdx + 1 : '∞';
+        document.getElementById('lvname').textContent = lvIdx >= 0 ? `Level ${lvIdx + 1}: ${lv.name}` : lv.name;
+        document.getElementById('b-pause').textContent = '⏸ Pause';
+      }
+
+      // ============================================
+      // TUTORIAL SYSTEM
+      // ============================================
+      function showTutorial(tut) {
+        document.getElementById('tt-title').textContent = tut.title;
+        document.getElementById('tt-body').textContent = tut.body;
+        document.getElementById('tutorial-tip').style.display = 'block';
+        S.paused = true;
+      }
+      function closeTutorial() {
+        document.getElementById('tutorial-tip').style.display = 'none';
+        S.paused = false;
+      }
+      window.closeTutorial = closeTutorial;
+
+      // ============================================
+      // PAUSE MENU
+      // ============================================
+      function togglePause() {
+        if (S.over) return;
+        S.paused = !S.paused;
+        document.getElementById('pause').classList.toggle('on', S.paused);
+        document.getElementById('b-pause').textContent = S.paused ? '▶ Resume' : '⏸ Pause';
+      }
+      window.togglePause = togglePause;
+
+      function restartLevel() {
+        document.getElementById('pause').classList.remove('on');
+        document.getElementById('msg').style.display = 'none';
+        if (S.currentLevelIdx >= 0) startLevel(S.currentLevelIdx);
+        else if (S.isProc) generateLevel();
+      }
+      window.restartLevel = restartLevel;
+
+      function quitToMenu() {
+        document.getElementById('pause').classList.remove('on');
+        document.getElementById('msg').style.display = 'none';
+        showScreen('title');
+      }
+      window.quitToMenu = quitToMenu;
+
+      // ============================================
+      // SETTINGS
+      // ============================================
+      function showSettings() {
+        showScreen('settings-screen');
+        document.getElementById('set-vol').value = Math.round(SETTINGS.vol * 100);
+        document.getElementById('set-sfx').classList.toggle('on', SETTINGS.sfx);
+        document.getElementById('set-shake').classList.toggle('on', SETTINGS.shake);
+        document.getElementById('set-particles').classList.toggle('on', SETTINGS.particles);
+        document.getElementById('set-trails').classList.toggle('on', SETTINGS.trails);
+        document.getElementById('set-tutorials').classList.toggle('on', SETTINGS.tutorials);
+      }
+      window.showSettings = showSettings;
+
+      function resetProgress() {
+        if (confirm('Reset all progress? This cannot be undone.'))
+        {
+          PROGRESS.totalSaved = 0; PROGRESS.totalStars = 0;
+          PROGRESS.levelsCompleted = []; PROGRESS.bestTimes = {}; PROGRESS.maxCombo = 0;
+          saveProgress();
+          showToast('Progress reset!');
+          showScreen('title');
+        }
+      }
+      window.resetProgress = resetProgress;
+
+      // ============================================
+      // HELP
+      // ============================================
+      function showHelp() {
+        document.getElementById('help').style.display = 'block';
+      }
+      window.showHelp = showHelp;
+      function closeHelp() {
+        document.getElementById('help').style.display = 'none';
+      }
+      window.closeHelp = closeHelp;
+
+      // ============================================
+      // GENERATOR
+      // ============================================
+      function openGen() {
+        document.getElementById('gen').style.display = 'block';
+        document.getElementById('g-seed').value = Math.floor(Math.random() * 999999) + 1;
+      }
+      window.openGen = openGen;
+      function closeGen() {
+        document.getElementById('gen').style.display = 'none';
+      }
+      window.closeGen = closeGen;
+
+      // Simplified generators for production
+      const GEN = {
+        puzzleFirst(rng, diff) {
+          T.fill(0);
+          const spawnX = 80, spawnY = 250;
+          for (let x = spawnX - 30; x < spawnX + 50; x++)for (let dy = 0; dy < 8; dy++)sT(x, spawnY + dy, 1);
+          const exitX = 720, exitY = 380;
+          for (let x = exitX - 40; x < exitX + 50; x++)for (let dy = 0; dy < 8; dy++)sT(x, exitY + dy, 1);
+
+          const numChallenges = 3 + diff;
+          let curX = spawnX + 50, curY = spawnY;
+          const stepX = (exitX - 40 - curX) / numChallenges;
+
+          for (let i = 0; i < numChallenges; i++)
+          {
+            const nextX = curX + stepX;
+            const nextY = rng.int(100, 400);
+            const chType = rng.pick([ 'gap', 'wall', 'fall', 'hazard', 'climb' ]);
+            const midX = curX + stepX / 2, midY = (curY + nextY) / 2;
+
+            switch (chType)
+            {
+              case 'gap':
+                for (let x = curX; x < midX - 20; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+                for (let x = midX + 20; x < nextX; x++)for (let dy = 0; dy < 6; dy++)sT(x, nextY + dy, 1);
+                break;
+              case 'wall':
+                for (let x = curX; x < midX - 10; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+                const wallH = rng.int(40, 100);
+                for (let x = midX - 8; x < midX + 8; x++)for (let y = midY - wallH; y < midY; y++)sT(x, y, 1);
+                for (let x = midX + 10; x < nextX; x++)for (let dy = 0; dy < 6; dy++)sT(x, nextY + dy, 1);
+                break;
+              case 'fall':
+                for (let x = curX; x < midX; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+                for (let x = midX; x < nextX; x++)for (let dy = 0; dy < 6; dy++)sT(x, nextY + dy, 1);
+                break;
+              case 'hazard':
+                for (let x = curX; x < nextX; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+                const haz = rng.pick([ 5, 6, 10 ]);
+                const hx = midX - rng.int(10, 20), hw = rng.int(15, 30);
+                for (let dx = 0; dx < hw; dx++)sT(hx + dx, curY - 1, haz);
+                break;
+              case 'climb':
+                for (let x = curX; x < midX; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+                const climbH = rng.int(60, 120);
+                for (let x = midX - 6; x < midX + 6; x++)for (let y = curY - climbH; y < curY; y++)sT(x, y, 1);
+                for (let x = midX; x < nextX; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY - climbH + dy, 1);
+                break;
+            }
+            curX = nextX; curY = nextY;
+          }
+          // Connect last to exit
+          for (let x = curX; x < exitX - 40; x++)for (let dy = 0; dy < 6; dy++)sT(x, curY + dy, 1);
+
+          // Stars
+          for (let i = 0; i < rng.int(3, 6); i++)sT(rng.int(100, 700), rng.int(80, 400), 7);
+
+          return {
+            spawn: { x: spawnX, y: spawnY - 10 }, exit: { x: exitX, y: exitY - 10 },
+            name: `Puzzle #${rng.int(1, 999)}`, brief: 'Navigate the puzzle chain.'
+          };
+        },
+        bsp(rng, diff) {
+          T.fill(1);
+          const rooms = [];
+          function split(x, y, w, h, depth) {
+            if (depth > 3 || w < 80 || h < 80)
+            {
+              const rw = rng.int(Math.floor(w * 0.5), w - 20);
+              const rh = rng.int(Math.floor(h * 0.5), h - 20);
+              const rx = x + rng.int(10, w - rw - 10);
+              const ry = y + rng.int(10, h - rh - 10);
+              rooms.push({ x: rx, y: ry, w: rw, h: rh, cx: rx + rw / 2, cy: ry + rh / 2 });
+              for (let yy = ry; yy < ry + rh; yy++)for (let xx = rx; xx < rx + rw; xx++)sT(xx, yy, 0);
+              return;
+            }
+            if (rng.chance(0.5))
+            {
+              const sx = x + rng.int(w * 0.3, w * 0.7);
+              split(x, y, sx - x, h, depth + 1); split(sx, y, x + w - sx, h, depth + 1);
+            } else
+            {
+              const sy = y + rng.int(h * 0.3, h * 0.7);
+              split(x, y, w, sy - y, depth + 1); split(x, sy, w, y + h - sy, depth + 1);
+            }
+          }
+          split(20, 20, W - 40, H - 40, 0);
+          for (let i = 0; i < rooms.length - 1; i++)
+          {
+            const a = rooms[ i ], b = rooms[ i + 1 ];
+            let cx = a.cx, cy = a.cy;
+            while (cx !== b.cx) { sT(cx, cy, 0); sT(cx, cy + 1, 0); cx += cx < b.cx ? 1 : -1 }
+            while (cy !== b.cy) { sT(cx, cy, 0); sT(cx + 1, cy, 0); cy += cy < b.cy ? 1 : -1 }
+          }
+          for (let i = 1; i < rooms.length - 1; i++)
+          {
+            if (rng.chance(diff * 0.2))
+            {
+              const r = rooms[ i ];
+              const haz = rng.pick([ 5, 6, 10 ]);
+              const hx = r.x + rng.int(5, r.w - 15), hy = r.y + r.h - 3;
+              for (let dx = 0; dx < rng.int(5, 12); dx++)sT(hx + dx, hy, haz);
+            }
+          }
+          for (let i = 0; i < rng.int(3, 6); i++)
+          {
+            const r = rng.pick(rooms);
+            sT(r.cx + rng.int(-10, 10), r.cy + rng.int(-10, 10), 7);
+          }
+          return {
+            spawn: { x: rooms[ 0 ].cx, y: rooms[ 0 ].cy }, exit: { x: rooms[ rooms.length - 1 ].cx, y: rooms[ rooms.length - 1 ].cy },
+            name: `Dungeon #${rng.int(1, 999)}`, brief: 'Navigate the dungeon.'
+          };
+        },
+        perlin(rng, diff) {
+          T.fill(0);
+          // Simple perlin-like noise
+          const seed = rng.s;
+          const noise = (x) => {
+            const s = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
+            return s - Math.floor(s);
+          };
+          const heights = [];
+          for (let x = 0; x < W; x++)
+          {
+            let n = 0, amp = 1, freq = 0.01, total = 0;
+            for (let o = 0; o < 4; o++)
+            {
+              n += noise(x * freq) * amp; total += amp; amp *= 0.5; freq *= 2;
+            }
+            heights.push(Math.floor(200 + (n / total) * 150));
+          }
+          for (let x = 0; x < W; x++)
+          {
+            const h = heights[ x ];
+            for (let y = h; y < H; y++)sT(x, y, 1);
+          }
+          // Flatten spawn/exit
+          for (let x = 30; x < 130; x++) { const h = heights[ 80 ]; for (let y = h - 10; y < h; y++)sT(x, y, 0); for (let y = h; y < h + 8; y++)sT(x, y, 1) }
+          for (let x = 680; x < 780; x++) { const h = heights[ 720 ]; for (let y = h - 10; y < h; y++)sT(x, y, 0); for (let y = h; y < h + 8; y++)sT(x, y, 1) }
+          for (let i = 0; i < diff; i++)
+          {
+            const gx = rng.int(200, 600), gw = rng.int(20, 40);
+            for (let x = gx; x < gx + gw; x++)for (let y = heights[ x ]; y < H; y++)sT(x, y, 0);
+          }
+          for (let i = 0; i < diff * 3; i++)
+          {
+            const hx = rng.int(150, 650), hy = heights[ hx ] - 1;
+            const haz = rng.pick([ 5, 6 ]);
+            for (let dx = 0; dx < rng.int(5, 15); dx++)sT(hx + dx, hy, haz);
+          }
+          for (let i = 0; i < rng.int(3, 6); i++)sT(rng.int(100, 700), rng.int(50, 350), 7);
+          return {
+            spawn: { x: 80, y: heights[ 80 ] - 10 }, exit: { x: 720, y: heights[ 720 ] - 10 },
+            name: `Hills #${rng.int(1, 999)}`, brief: 'Cross the rolling hills.'
+          };
+        },
+        multipath(rng, diff) {
+          T.fill(0);
+          for (let x = 0; x < W; x++)for (let y = 400; y < H; y++)sT(x, y, 1);
+          for (let x = 30; x < 130; x++)for (let dy = 0; dy < 6; dy++)sT(x, 280 + dy, 1);
+          for (let x = 680; x < 780; x++)for (let dy = 0; dy < 6; dy++)sT(x, 380 + dy, 1);
+          const paths = [ { y: 150 }, { y: 280 }, { y: 380 } ];
+          for (const path of paths)
+          {
+            let x = 130;
+            while (x < 680)
+            {
+              const seg = rng.int(40, 80);
+              for (let dx = 0; dx < seg; dx++)for (let dy = 0; dy < 4; dy++)sT(x + dx, path.y + dy, 1);
+              if (rng.chance(0.6) && x + seg < 650)
+              {
+                const ch = rng.pick([ 'gap', 'wall', 'hazard' ]);
+                if (ch === 'gap') { x += seg + rng.int(20, 40); continue }
+                else if (ch === 'wall') { const wh = rng.int(30, 60); for (let dy = 0; dy < wh; dy++)sT(x + seg, path.y - dy, 1) }
+                else { const haz = rng.pick([ 5, 6, 10 ]); for (let dx = 0; dx < rng.int(5, 15); dx++)sT(x + dx + 5, path.y - 1, haz) }
+              }
+              x += seg + rng.int(10, 30);
+            }
+          }
+          for (const p of paths) sT(rng.int(200, 600), p.y - 15, 7);
+          return {
+            spawn: { x: 80, y: 270 }, exit: { x: 720, y: 370 },
+            name: `Multi-Path #${rng.int(1, 999)}`, brief: 'Choose your route.'
+          };
+        },
+        gauntlet(rng, diff) {
+          T.fill(0);
+          for (let x = 350; x < 450; x++)for (let dy = 0; dy < 4; dy++)sT(x, 30 + dy, 1);
+          for (let x = 350; x < 450; x++)for (let dy = 0; dy < 4; dy++)sT(x, H - 40 + dy, 1);
+          const numPlats = 8 + diff * 2;
+          for (let i = 0; i < numPlats; i++)
+          {
+            const py = 60 + i * (H - 120) / numPlats;
+            const px = rng.int(100, 600), pw = rng.int(60, 150);
+            for (let x = px; x < px + pw; x++)for (let dy = 0; dy < 3; dy++)sT(x, py + dy, 1);
+            if (rng.chance(diff * 0.15))
+            {
+              const hx = px + rng.int(10, pw - 20), haz = rng.pick([ 5, 6 ]);
+              for (let dx = 0; dx < rng.int(5, 10); dx++)sT(hx + dx, py - 1, haz);
+            }
+          }
+          for (let i = 0; i < rng.int(4, 8); i++)sT(rng.int(100, 700), rng.int(80, 400), 7);
+          return {
+            spawn: { x: 400, y: 20 }, exit: { x: 400, y: H - 50 },
+            name: `Gauntlet #${rng.int(1, 999)}`, brief: 'Fall through the platforms.'
+          };
+        },
+        islands(rng, diff) {
+          T.fill(0);
+          for (let y = 300; y < H; y++)for (let x = 0; x < W; x++)sT(x, y, 10);
+          const numIslands = 6 + diff;
+          const islands = [];
+          for (let i = 0; i < numIslands; i++)
+          {
+            const ix = rng.int(50, 700), iy = rng.int(200, 280), iw = rng.int(50, 120);
+            islands.push({ x: ix, y: iy, w: iw });
+            for (let x = ix; x < ix + iw; x++)
+            {
+              const h = rng.int(15, 30);
+              for (let dy = 0; dy < h; dy++)sT(x, iy + dy, 1);
+            }
+          }
+          for (let x = 20; x < 100; x++)for (let dy = 0; dy < 25; dy++)sT(x, 250 + dy, 1);
+          for (let x = 700; x < 780; x++)for (let dy = 0; dy < 25; dy++)sT(x, 270 + dy, 1);
+          for (let i = 0; i < islands.length - 1; i++)
+          {
+            if (rng.chance(0.4))
+            {
+              const a = islands[ i ], b = islands[ i + 1 ];
+              const by = Math.min(a.y, b.y);
+              const x1 = Math.min(a.x + a.w, b.x), x2 = Math.max(a.x, b.x);
+              for (let x = x1; x < x2; x++)sT(x, by, 1);
+            }
+          }
+          for (const isl of islands)
+          {
+            if (rng.chance(diff * 0.15))
+            {
+              const hx = isl.x + rng.int(5, isl.w - 10);
+              for (let dx = 0; dx < rng.int(3, 6); dx++)sT(hx + dx, isl.y - 1, rng.pick([ 5, 6 ]));
+            }
+          }
+          for (let i = 0; i < rng.int(3, 6); i++)
+          {
+            const isl = rng.pick(islands);
+            sT(isl.x + isl.w / 2, isl.y - 5, 7);
+          }
+          return {
+            spawn: { x: 60, y: 240 }, exit: { x: 740, y: 260 },
+            name: `Islands #${rng.int(1, 999)}`, brief: 'Hop between islands.'
+          };
+        },
+        chaos(rng, diff) {
+          T.fill(0);
+          for (let i = 0; i < rng.int(8, 15); i++)
+          {
+            const px = rng.int(30, 700), py = rng.int(80, 400), pw = rng.int(40, 120);
+            for (let x = px; x < px + pw && x < W; x++)for (let dy = 0; dy < rng.int(2, 5); dy++)sT(x, py + dy, 1);
+          }
+          for (let i = 0; i < rng.int(3, 7); i++)
+          {
+            const wx = rng.int(100, 700), wy = rng.int(100, 300), wh = rng.int(40, 150);
+            for (let y = wy; y < wy + wh && y < H; y++)for (let dx = 0; dx < rng.int(2, 5); dx++)sT(wx + dx, y, 1);
+          }
+          for (let i = 0; i < rng.int(8, 15 + diff * 3); i++)
+          {
+            const hx = rng.int(50, 750), hy = rng.int(100, 400);
+            const ht = rng.pick([ 5, 6, 10 ]);
+            for (let dx = 0; dx < rng.int(5, 15); dx++)sT(hx + dx, hy, ht);
+          }
+          for (let x = 0; x < W; x++)for (let y = 380; y < H; y++)if (gT(x, y) === 0) sT(x, y, 1);
+          for (let x = 30; x < 130; x++)for (let dy = 0; dy < 4; dy++)sT(x, 280 + dy, 1);
+          for (let x = 680; x < 780; x++)for (let dy = 0; dy < 4; dy++)sT(x, 370 + dy, 1);
+          for (let i = 0; i < rng.int(3, 7); i++)sT(rng.int(50, 750), rng.int(50, 400), 7);
+          return {
+            spawn: { x: 80, y: 270 }, exit: { x: 730, y: 360 },
+            name: `Chaos #${rng.int(1, 999)}`, brief: 'Pure chaos!'
+          };
+        }
+      };
+
+      function generateLevel() {
+        initAudio();
+        const algo = document.getElementById('g-algo').value;
+        const diff = +document.getElementById('g-diff').value;
+        const theme = document.getElementById('g-theme').value;
+        const seed = +document.getElementById('g-seed').value;
+        const count = +document.getElementById('g-count').value;
+
+        class RNG { constructor(s) { this.s = s >>> 0 } next() { this.s = (this.s * 1664525 + 1013904223) >>> 0; return this.s / 4294967296 } int(a, b) { return Math.floor(this.next() * (b - a + 1)) + a } pick(arr) { return arr[ this.int(0, arr.length - 1) ] } chance(p) { return this.next() < p } }
+        const rng = new RNG(seed);
+
+        currentTheme = theme;
+        const gen = GEN[ algo ] || GEN.puzzleFirst;
+        const result = gen(rng, diff);
+
+        // Analyze and give skills
+        let hasFire = false, hasSpike = false, hasWater = false, hasWall = false, hasGap = false, hasFall = false;
+        for (let y = 50; y < H - 20; y += 10)for (let x = 50; x < W - 20; x += 10)
+        {
+          const t = gT(x, y);
+          if (t === 5) hasFire = true; if (t === 6) hasSpike = true; if (t === 10) hasWater = true;
+        }
+        for (let x = 100; x < 700; x += 50) { let wallH = 0; for (let y = 50; y < H - 50; y++) { if (solid(x, y)) wallH++; else { if (wallH > 15) hasWall = true; wallH = 0 } } }
+        for (let y = 300; y < 420; y += 20) { let gapW = 0; for (let x = 100; x < 700; x++) { if (!solid(x, y)) gapW++; else { if (gapW > 15) hasGap = true; gapW = 0 } } }
+        if (result.exit.y - result.spawn.y > 100) hasFall = true;
+
+        const base = diff * 2;
+        const sk = {
+          floater: hasFall ? base * 2 : base, blocker: base,
+          builder: hasGap ? base * 2 : base, basher: hasWall ? base * 2 : base,
+          digger: base, climber: hasWall ? base * 2 : base,
+          exploder: hasWall ? base : 0, swimmer: hasWater ? base * 2 : 0,
+          jumper: hasGap ? base : 0, glider: hasFall ? base : 0,
+          firewalker: hasFire ? base * 2 : 0, spikewalker: hasSpike ? base * 2 : 0,
+          ghost: hasWall ? base : 0, rocket: base,
+          splitter: Math.floor(base / 2), bridge: hasGap ? base : 0
+        };
+
+        T.fill(0);
+        gen(rng, diff); // regenerate since we cleared
+
+        S.lv = -1; S.currentLevelIdx = -1; S.isProc = true;
+        S.lems = []; S.parts = []; S.spT = 0; S.spawned = 0;
+        S.saved = 0; S.lost = 0; S.stars = 0; S.over = false; S.selSk = null;
+        S.undo = []; S.hlLem = null; S.shake = 0; S.combo = 0;
+        S.rewindBuf = []; S.rewinding = false; S.flashT = 0; S.skillFlash = {};
+        S.paused = false;
+
+        S.total = count;
+        S.need = Math.max(3, Math.floor(count * (0.5 + diff * 0.08)));
+        S.rate = Math.max(25, 60 - diff * 6);
+        S.time = (180 + diff * 30) * 60;
+        S.skC = sk;
+        S.spawnP = result.spawn;
+        S.exitP = result.exit;
+        S.curLv = { name: result.name, brief: result.brief };
+        S.weather = rng.int(0, 2);
+        S.windDir = rng.chance(0.5) ? 1 : -1;
+        S.levelStartTime = Date.now();
+
+        for (let dy = -18; dy <= 0; dy++)for (let dx = -6; dx <= 6; dx++)
+        {
+          const tx = S.exitP.x + dx, ty = S.exitP.y + dy;
+          if (tx >= 0 && tx < W && ty >= 0 && ty < H && gT(tx, ty) !== 7) sT(tx, ty, 3);
+        }
+
+        closeGen();
+        showScreen('game');
+        updHUD(); updSk();
+        document.getElementById('h-lv').textContent = '∞';
+        document.getElementById('lvname').textContent = `🎲 ${result.name}`;
+        showToast(`Generated: ${result.name}`);
+      }
+      window.generateLevel = generateLevel;
+
+      // ============================================
+      // LEMMING CLASS WITH SKILL VFX
+      // ============================================
+      class Lem {
+        constructor(x, y) {
+          this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.f = 1; this.st = 'falling';
+          this.skill = null; this.action = null; this.fd = 0; this.bs = 0;
+          this.af = 0; this.et = -1;
+          this.col = `hsl(${Math.random() * 60 + 170},70%,60%)`;
+          this.aiMark = false; this.ghostT = 0; this.rocketT = 0; this.jumpT = 0;
+          this.onIce = false; this.id = Math.random(); this.trail = [];
+          this.walkPhase = Math.random() * Math.PI * 2;
+          this.umbrellaOpen = 0; // for floater animation
+        }
+        update() {
+          if (this.st === 'dead' || this.st === 'exiting') return;
+          this.af++;
+          this.walkPhase += 0.3;
+          if (SETTINGS.trails && this.af % 4 === 0)
+          {
+            this.trail.push({ x: this.x, y: this.y, life: 12 });
+            if (this.trail.length > 8) this.trail.shift();
+          }
+          for (const t of this.trail) t.life--;
+          this.trail = this.trail.filter(t => t.life > 0);
+
+          if (this.umbrellaOpen > 0) this.umbrellaOpen = Math.min(1, this.umbrellaOpen + 0.1);
+
+          if (this.et > 0) { this.et--; if (this.et === 0) { this.explode(); return } }
+          if (this.ghostT > 0) this.ghostT--;
+          if (this.rocketT > 0)
+          {
+            this.rocketT--; this.vy = -3; this.y += this.vy;
+            // Rocket flame particles
+            if (SETTINGS.particles && this.af % 2 === 0)
+            {
+              S.parts.push({ x: this.x, y: this.y + 4, vx: (Math.random() - .5) * 2, vy: Math.random() * 3 + 1, life: 15, col: Math.random() > .5 ? '#ff6b4a' : '#ffd86b', sz: 2, type: 'flame' });
+            }
+            if (this.rocketT === 0) { this.st = 'falling'; this.fd = 0 }
+            return;
+          }
+          if (this.jumpT > 0)
+          {
+            this.jumpT--; this.vx = this.f * 2; this.vy = -1; this.x += this.vx; this.y += this.vy;
+            if (this.jumpT === 0)
+            {
+              this.st = 'walking';
+              // Landing dust
+              if (SETTINGS.particles)
+              {
+                for (let i = 0; i < 5; i++)S.parts.push({ x: this.x, y: this.y, vx: (Math.random() - .5) * 2, vy: -Math.random() * 1.5, life: 15, col: '#8b6f47', sz: 2, type: 'dust' });
+              }
+            }
+            return;
+          }
+          if (S.exitP)
+          {
+            const dx = this.x - S.exitP.x, dy = this.y - S.exitP.y;
+            if (Math.abs(dx) < 12 && Math.abs(dy) < 22)
+            {
+              this.st = 'exiting'; S.saved++; S.combo++;
+              if (S.combo > S.maxCombo) S.maxCombo = S.combo;
+              sndSave();
+              S.flashT = 10; S.flashColor = '#6bff8a';
+              if (SETTINGS.particles)
+              {
+                for (let i = 0; i < 15; i++)S.parts.push({ x: this.x, y: this.y, vx: (Math.random() - .5) * 5, vy: -Math.random() * 5 - 1, life: 40, col: '#6bff8a', sz: 2, type: 'sparkle' });
+              }
+              return;
+            }
+          }
+          const px = Math.floor(this.x), py = Math.floor(this.y);
+          if (gT(px, py) === 7)
+          {
+            sT(px, py, 0); S.stars++; sndStar();
+            S.flashT = 8; S.flashColor = '#ffd86b';
+            if (SETTINGS.particles)
+            {
+              for (let i = 0; i < 10; i++)S.parts.push({ x: px, y: py, vx: (Math.random() - .5) * 4, vy: -Math.random() * 3 - 1, life: 30, col: '#ffd86b', sz: 2, type: 'sparkle' });
+            }
+          }
+          this.onIce = ice(px, py);
+          if (wind(px, py)) this.vx += S.windDir * 0.3;
+          if (this.ghostT === 0)
+          {
+            if (fire(px, py) && this.skill !== 'firewalker') { this.die('fire'); return }
+            if (spike(px, py) && this.skill !== 'spikewalker') { this.die('spike'); return }
+            if (water(px, py) && this.skill !== 'swimmer') { this.die('drown'); return }
+          }
+          // Swimmer splash
+          if (this.skill === 'swimmer' && water(px, py) && SETTINGS.particles && this.af % 4 === 0)
+          {
+            S.parts.push({ x: this.x, y: this.y - 2, vx: (Math.random() - .5) * 1.5, vy: -Math.random() * 2, life: 15, col: '#8cf', sz: 1, type: 'splash' });
+          }
+          // Firewalker aura
+          if (this.skill === 'firewalker' && SETTINGS.particles && this.af % 3 === 0)
+          {
+            S.parts.push({ x: this.x + (Math.random() - .5) * 6, y: this.y - 5, vx: (Math.random() - .5) * .5, vy: -Math.random() * 1.5 - .5, life: 15, col: Math.random() > .5 ? '#ff6b4a' : '#ffd86b', sz: 2, type: 'flame' });
+          }
+          // Ghost afterimages
+          if (this.ghostT > 0 && SETTINGS.particles && this.af % 5 === 0)
+          {
+            S.parts.push({ x: this.x, y: this.y, vx: 0, vy: 0, life: 20, col: '#fff', sz: 6, type: 'ghost' });
+          }
+
+          switch (this.st)
+          {
+            case 'falling': this.doFall(); break; case 'walking': this.doWalk(); break;
+            case 'building': this.doBuild(); break; case 'bashing': this.doBash(); break;
+            case 'digging': this.doDig(); break; case 'climbing': this.doClimb(); break;
+            case 'blocking': this.doBlock(); break; case 'floating': this.doFloat(); break;
+            case 'gliding': this.doGlide(); break; case 'bridging': this.doBridge(); break;
+          }
+          this.vx *= 0.8; this.x += this.vx;
+        }
+        explode() {
+          const px = Math.floor(this.x), py = Math.floor(this.y);
+          for (let dy = -12; dy <= 12; dy++)for (let dx = -12; dx <= 12; dx++)
+            if (dx * dx + dy * dy <= 144 && gT(px + dx, py + dy) === 1) sT(px + dx, py + dy, 0);
+          sndExplode();
+          if (SETTINGS.shake) S.shake = 20;
+          S.flashT = 15; S.flashColor = '#ff6b4a';
+          if (SETTINGS.particles)
+          {
+            for (let i = 0; i < 40; i++)
+            {
+              const a = Math.random() * Math.PI * 2, sp = Math.random() * 8 + 2;
+              S.parts.push({ x: this.x, y: this.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2, life: 50, col: Math.random() > .5 ? '#ff6b4a' : '#ffd86b', sz: 3, type: 'explosion' });
+            }
+            // Shockwave
+            S.parts.push({ x: this.x, y: this.y, vx: 0, vy: 0, life: 20, col: '#fff', sz: 5, type: 'shockwave' });
+          }
+          this.die('boom');
+        }
+        doFall() {
+          if (solid(Math.floor(this.x), Math.floor(this.y) + 1))
+          {
+            if (this.fd > 60 && this.skill !== 'floater' && this.skill !== 'glider') { this.die('splat'); return }
+            this.fd = 0; this.st = 'walking'; this.vy = 0;
+            // Landing dust
+            if (SETTINGS.particles && this.af > 10)
+            {
+              for (let i = 0; i < 3; i++)S.parts.push({ x: this.x, y: this.y, vx: (Math.random() - .5) * 2, vy: -Math.random() * 1.5, life: 12, col: '#8b6f47', sz: 1, type: 'dust' });
+            }
+            return;
+          }
+          if (this.fd > 25 && (this.skill === 'floater' || this.skill === 'glider'))
+          {
+            this.st = this.skill === 'glider' ? 'gliding' : 'floating';
+            if (this.skill === 'floater') this.umbrellaOpen = 0.01;
+            return;
+          }
+          this.vy += 0.5; this.y += this.vy; this.fd += this.vy;
+          if (this.y > H) this.die('fall');
+        }
+        doFloat() {
+          if (this.umbrellaOpen < 1) this.umbrellaOpen = Math.min(1, this.umbrellaOpen + 0.15);
+          if (solid(Math.floor(this.x), Math.floor(this.y) + 1)) { this.fd = 0; this.st = 'walking'; this.vy = 0; this.umbrellaOpen = 0; return }
+          this.vy = 1; this.y += this.vy;
+          if (this.y > H) this.die('fall');
+        }
+        doGlide() {
+          if (this.umbrellaOpen < 1) this.umbrellaOpen = Math.min(1, this.umbrellaOpen + 0.15);
+          if (solid(Math.floor(this.x), Math.floor(this.y) + 1)) { this.fd = 0; this.st = 'walking'; this.vy = 0; this.umbrellaOpen = 0; return }
+          this.vy = 1; this.y += this.vy; this.x += this.f * 0.5;
+          if (this.y > H) this.die('fall');
+        }
+        doWalk() {
+          for (const o of S.lems)
+          {
+            if (o === this || o.st !== 'blocking') continue;
+            if (Math.abs(o.y - this.y) < 10 && Math.abs(o.x - this.x) < 8 &&
+              ((this.f === 1 && o.x > this.x) || (this.f === -1 && o.x < this.x))) { this.f *= -1; return }
+          }
+          const nx = Math.floor(this.x + this.f), fy = Math.floor(this.y);
+          let wh = 0;
+          for (let dy = 0; dy <= 8; dy++) { if (solid(nx, fy - dy)) wh = dy + 1; else break }
+          if (wh > 0)
+          {
+            if (wh <= 4 && !solid(nx, fy - wh - 1)) { this.x += this.f; this.y -= wh; return }
+            if (this.skill === 'climber') { this.st = 'climbing'; return }
+            if (this.action === 'basher') { this.st = 'bashing'; return }
+            this.f *= -1; return;
+          }
+          if (!solid(Math.floor(this.x), fy + 1)) { this.st = 'falling'; return }
+          const spd = this.onIce ? 0.3 : 0.8;
+          this.x += this.f * spd;
+          if (this.action === 'builder' && this.bs < 12) this.st = 'building';
+          else if (this.action === 'digger') this.st = 'digging';
+          else if (this.action === 'bridge') this.st = 'bridging';
+        }
+        doBuild() {
+          if (this.bs >= 12) { this.action = null; this.st = 'walking'; return }
+          const px = Math.floor(this.x), py = Math.floor(this.y);
+          let built = false;
+          for (let i = 0; i < 3; i++)
+          {
+            const bx = px + this.f * (i + 1), by = py - 1;
+            if (gT(bx, by) === 0) { sT(bx, by, 1); built = true }
+          }
+          if (built)
+          {
+            sndBuild();
+            if (SETTINGS.particles)
+            {
+              for (let i = 0; i < 3; i++)S.parts.push({ x: px + this.f * 2, y: py - 1, vx: (Math.random() - .5) * 1.5, vy: -Math.random() * 1.5, life: 12, col: '#c08040', sz: 1, type: 'dust' });
+            }
+          }
+          this.x += this.f; this.y -= 1; this.bs++;
+          if (this.bs >= 12) { this.action = null; this.st = 'walking' }
+        }
+        doBridge() {
+          if (this.bs >= 15) { this.action = null; this.st = 'walking'; return }
+          const px = Math.floor(this.x), py = Math.floor(this.y);
+          let built = false;
+          for (let i = 0; i < 2; i++)
+          {
+            const bx = px + this.f * (i + 1), by = py;
+            if (gT(bx, by) === 0) { sT(bx, by, 1); built = true }
+          }
+          if (built)
+          {
+            sndBuild();
+            if (SETTINGS.particles)
+            {
+              for (let i = 0; i < 2; i++)S.parts.push({ x: px + this.f * 2, y: py, vx: (Math.random() - .5) * 1.5, vy: -Math.random() * 1, life: 10, col: '#8b4513', sz: 1, type: 'dust' });
+            }
+          }
+          this.x += this.f; this.bs++;
+          if (this.bs >= 15) { this.action = null; this.st = 'walking' }
+        }
+        doBash() {
+          const px = Math.floor(this.x), py = Math.floor(this.y); let d = false;
+          for (let dy = -6; dy <= 2; dy++)for (let dx = 0; dx < 5; dx++)
+          {
+            const tx = px + this.f * (dx + 1), ty = py + dy;
+            if (gT(tx, ty) === 1) { sT(tx, ty, 0); d = true }
+          }
+          if (d)
+          {
+            sndBash();
+            if (SETTINGS.particles && this.af % 3 === 0)
+            {
+              for (let i = 0; i < 4; i++)S.parts.push({ x: px + this.f * 5, y: py - 3, vx: this.f * (Math.random() * 2 + 1), vy: (Math.random() - .5) * 2, life: 15, col: '#8b6f47', sz: 2, type: 'rock' });
+            }
+          }
+          this.x += this.f * 0.6;
+          if (!d) { this.action = null; this.st = 'walking' }
+        }
+        doDig() {
+          const px = Math.floor(this.x), py = Math.floor(this.y); let d = false;
+          for (let dy = 1; dy <= 4; dy++)for (let dx = -3; dx <= 3; dx++)
+          {
+            if (gT(px + dx, py + dy) === 1) { sT(px + dx, py + dy, 0); d = true }
+          }
+          if (d)
+          {
+            sndBash();
+            if (SETTINGS.particles && this.af % 3 === 0)
+            {
+              for (let i = 0; i < 3; i++)S.parts.push({ x: px + (Math.random() - .5) * 6, y: py + 3, vx: (Math.random() - .5) * 1.5, vy: Math.random() * 2, life: 15, col: '#8b6f47', sz: 2, type: 'rock' });
+            }
+          }
+          this.y += 1;
+          if (!d || this.y >= H - 2) { this.action = null; this.st = 'walking' }
+        }
+        doClimb() {
+          const px = Math.floor(this.x), py = Math.floor(this.y);
+          if (!solid(px + this.f, py - 1))
+          {
+            this.x += this.f * 2; this.y -= 2; this.st = 'walking';
+            if (SETTINGS.particles)
+            {
+              for (let i = 0; i < 3; i++)S.parts.push({ x: this.x, y: this.y, vx: (Math.random() - .5) * 1.5, vy: -Math.random() * 1.5, life: 12, col: '#ffd86b', sz: 1, type: 'sparkle' });
+            }
+            return;
+          }
+          this.y -= 1;
+          // Grip marks
+          if (SETTINGS.particles && this.af % 6 === 0)
+          {
+            S.parts.push({ x: px + this.f * 3, y: py, vx: 0, vy: 0, life: 20, col: '#ffd86b', sz: 1, type: 'grip' });
+          }
+          if (this.y < 0) this.die('fall');
+        }
+        doBlock() {
+          if (!solid(Math.floor(this.x), Math.floor(this.y) + 1)) { this.st = 'falling'; this.skill = 'blocker' }
+        }
+        die(r) {
+          this.st = 'dead'; S.lost++; S.combo = 0; sndDeath();
+          S.flashT = 8; S.flashColor = '#ff4466';
+          const cl = r === 'splat' ? '#ff4466' : r === 'drown' ? '#4488ff' : r === 'fire' ? '#ff8844' : r === 'spike' ? '#cccccc' : '#ff6b4a';
+          if (SETTINGS.particles)
+          {
+            for (let i = 0; i < 15; i++)
+            {
+              S.parts.push({ x: this.x, y: this.y, vx: (Math.random() - .5) * 6, vy: (Math.random() - .5) * 6 - 2, life: 40, col: cl, sz: 2, type: 'death' });
+            }
+            if (r === 'splat')
+            {
+              // Splat mark
+              S.parts.push({ x: this.x, y: this.y + 2, vx: 0, vy: 0, life: 60, col: '#ff4466', sz: 8, type: 'splat' });
+            }
+          }
+        }
+        draw() {
+          if (this.st === 'dead') return;
+          // Trail
+          if (SETTINGS.trails)
+          {
+            for (const t of this.trail)
+            {
+              c.fillStyle = this.col;
+              c.globalAlpha = t.life / 20 * 0.4;
+              c.fillRect(t.x - 1, t.y - 4, 2, 4);
+            }
+            c.globalAlpha = 1;
+          }
+          const x = Math.floor(this.x), y = Math.floor(this.y);
+
+          // Highlight
+          if (this.aiMark)
+          {
+            c.strokeStyle = '#0fa'; c.lineWidth = 2;
+            c.strokeRect(x - 9, y - 17, 18, 22);
+          }
+          if (S.hlLem === this)
+          {
+            c.strokeStyle = '#ffd86b'; c.lineWidth = 2;
+            c.strokeRect(x - 8, y - 16, 16, 20);
+          }
+
+          // Exploder countdown ring
+          if (this.et > 0)
+          {
+            const pct = this.et / 300;
+            c.strokeStyle = '#ff0000'; c.lineWidth = 2;
+            c.beginPath();
+            c.arc(x, y - 4, 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+            c.stroke();
+            // Pulsing red glow
+            c.fillStyle = '#f00';
+            c.globalAlpha = .3 + Math.sin(this.af * .5) * .2;
+            c.beginPath(); c.arc(x, y - 4, 8, 0, Math.PI * 2); c.fill();
+            c.globalAlpha = 1;
+            // Countdown number
+            c.fillStyle = '#fff'; c.font = 'bold 10px Courier New'; c.textAlign = 'center';
+            c.fillText(Math.ceil(this.et / 60), x, y - 1);
+          }
+
+          // Ghost transparency
+          if (this.ghostT > 0) c.globalAlpha = .4 + Math.sin(this.af * .3) * .1;
+
+          // Body animation
+          const walking = this.st === 'walking';
+          const legPhase = Math.sin(this.walkPhase) * 2;
+          const armPhase = Math.sin(this.walkPhase + Math.PI) * 1.5;
+
+          // Shadow
+          c.fillStyle = 'rgba(0,0,0,0.3)';
+          c.beginPath(); c.ellipse(x, y + 2, 4, 1.5, 0, 0, Math.PI * 2); c.fill();
+
+          // Legs
+          c.fillStyle = this.col;
+          if (walking)
+          {
+            c.fillRect(x - 2, y, 2, 2 + legPhase);
+            c.fillRect(x, y, 2, 2 - legPhase);
+          } else
+          {
+            c.fillRect(x - 2, y, 2, 2);
+            c.fillRect(x, y, 2, 2);
+          }
+
+          // Body
+          c.fillStyle = this.col;
+          c.fillRect(x - 3, y - 8, 6, 8);
+
+          // Arms
+          if (walking)
+          {
+            c.fillRect(x - 4, y - 6 + armPhase, 1, 3);
+            c.fillRect(x + 3, y - 6 - armPhase, 1, 3);
+          } else
+          {
+            c.fillRect(x - 4, y - 6, 1, 3);
+            c.fillRect(x + 3, y - 6, 1, 3);
+          }
+
+          // Head
+          c.fillStyle = '#ffe0b0';
+          c.fillRect(x - 2, y - 11, 4, 3);
+          // Hair
+          c.fillStyle = '#4a90e2';
+          c.fillRect(x - 2, y - 12, 4, 1);
+          // Eyes (face direction)
+          c.fillStyle = '#000';
+          if (this.f === 1) { c.fillRect(x, y - 10, 1, 1) }
+          else { c.fillRect(x - 1, y - 10, 1, 1) }
+
+          // === SKILL VISUALS ===
+
+          // Floater umbrella
+          if (this.skill === 'floater' || this.st === 'floating')
+          {
+            const open = this.umbrellaOpen;
+            const uw = 14 * open, uh = 3;
+            c.fillStyle = '#ff6b9d';
+            c.fillRect(x - uw / 2, y - 18, uw, uh);
+            c.fillRect(x - uw / 2 - 1, y - 17, uw + 2, 1);
+            // Handle
+            c.fillStyle = '#888';
+            c.fillRect(x, y - 16 + uh, 1, 6);
+            // Deployment poof
+            if (open < 1 && SETTINGS.particles && this.af % 2 === 0)
+            {
+              S.parts.push({ x: x + (Math.random() - .5) * 10, y: y - 18, vx: (Math.random() - .5) * 2, vy: -Math.random() * 1, life: 10, col: '#ff6b9d', sz: 1, type: 'poof' });
+            }
+          }
+
+          // Glider parachute
+          if (this.skill === 'glider' || this.st === 'gliding')
+          {
+            const open = this.umbrellaOpen;
+            const sway = Math.sin(this.af * .1) * 2;
+            c.fillStyle = '#9d6bff';
+            c.fillRect(x - 8 + sway, y - 18, 16 * open, 2);
+            c.fillRect(x - 9 + sway, y - 17, 18 * open, 1);
+            c.fillStyle = '#888';
+            c.fillRect(x, y - 16, 1, 4);
+          }
+
+          // Climber grip marks
+          if (this.skill === 'climber' && this.st === 'climbing')
+          {
+            c.fillStyle = '#ffd86b';
+            c.fillRect(x - 4, y - 6, 1, 4);
+            c.fillRect(x + 3, y - 6, 1, 4);
+          }
+
+          // Blocker stop sign
+          if (this.st === 'blocking')
+          {
+            const pulse = Math.sin(this.af * .2) * .3 + .7;
+            c.fillStyle = `rgba(255,51,51,${pulse})`;
+            c.fillRect(x - 6, y - 11, 12, 2);
+            c.fillRect(x - 6, y - 5, 12, 2);
+            c.fillRect(x - 6, y - 11, 2, 8);
+            c.fillRect(x + 4, y - 11, 2, 8);
+            // Stop symbol
+            c.fillStyle = '#fff';
+            c.fillRect(x - 2, y - 9, 4, 1);
+          }
+
+          // Builder brick in hand
+          if (this.st === 'building')
+          {
+            c.fillStyle = '#c08040';
+            c.fillRect(x + this.f * 3, y - 5, 3, 2);
+            // Brick pattern on placed blocks
+            c.fillStyle = '#8b5a2b';
+            c.fillRect(x + this.f * 2, y - 3, 1, 1);
+          }
+
+          // Bridge plank
+          if (this.st === 'bridging')
+          {
+            c.fillStyle = '#8b4513';
+            c.fillRect(x + this.f * 3, y - 2, 3, 2);
+          }
+
+          // Basher pickaxe
+          if (this.st === 'bashing')
+          {
+            const swing = Math.sin(this.af * .5) * 2;
+            c.fillStyle = '#aaa';
+            c.fillRect(x + this.f * 4 + swing, y - 7, 2, 4);
+            c.fillStyle = '#654321';
+            c.fillRect(x + this.f * 3, y - 4, 1, 3);
+          }
+
+          // Digger shovel
+          if (this.st === 'digging')
+          {
+            c.fillStyle = '#aaa';
+            c.fillRect(x - 1, y + 2, 2, 3);
+          }
+
+          // Swimmer swim cap
+          if (this.skill === 'swimmer')
+          {
+            c.fillStyle = '#48f';
+            c.fillRect(x - 3, y - 12, 6, 2);
+          }
+
+          // Jumper spring
+          if (this.skill === 'jumper')
+          {
+            c.fillStyle = '#0f0';
+            c.fillRect(x - 3, y - 1, 6, 1);
+            if (this.jumpT > 0)
+            {
+              // Spring compression
+              c.fillStyle = '#0a0';
+              c.fillRect(x - 2, y + 1, 4, 1);
+            }
+          }
+
+          // Firewalker flame aura
+          if (this.skill === 'firewalker')
+          {
+            const flicker = Math.sin(this.af * .3) * .3 + .7;
+            c.fillStyle = `rgba(255,136,0,${flicker * 0.5})`;
+            c.beginPath(); c.arc(x, y - 4, 7, 0, Math.PI * 2); c.fill();
+          }
+
+          // Spikewalker shield
+          if (this.skill === 'spikewalker')
+          {
+            const shimmer = Math.sin(this.af * .2) * .3 + .7;
+            c.strokeStyle = `rgba(200,200,200,${shimmer})`;
+            c.lineWidth = 1;
+            c.strokeRect(x - 5, y - 12, 10, 14);
+          }
+
+          // Ghost transparency overlay
+          if (this.ghostT > 0)
+          {
+            c.fillStyle = '#fff';
+            c.globalAlpha = .2;
+            c.fillRect(x - 4, y - 11, 8, 13);
+            c.globalAlpha = 1;
+          }
+
+          // Rocket flame
+          if (this.rocketT > 0)
+          {
+            c.fillStyle = '#f80';
+            c.fillRect(x - 2, y + 2, 4, 4 + Math.random() * 2);
+            c.fillStyle = '#ff0';
+            c.fillRect(x - 1, y + 3, 2, 2);
+          }
+
+          // Ice tint under feet
+          if (this.onIce)
+          {
+            c.fillStyle = '#8cf'; c.globalAlpha = .4;
+            c.fillRect(x - 4, y + 2, 8, 2); c.globalAlpha = 1;
+          }
+
+          c.globalAlpha = 1;
+        }
+      }
+
+      // ============================================
+      // SKILL ASSIGNMENT WITH VFX
+      // ============================================
+      function assign(l, sk) {
+        if (!sk || S.skC[ sk ] <= 0) return;
+        S.undo.push({ l, os: l.skill, oa: l.action, sk });
+        S.skillFlash[ sk ] = 20; // flash the skill button
+
+        if ([ 'floater', 'climber', 'blocker', 'swimmer', 'jumper', 'glider', 'firewalker', 'spikewalker' ].includes(sk))
+        {
+          if (l.skill === sk) return; l.skill = sk;
+          if (sk === 'blocker' && l.st !== 'falling') { l.st = 'blocking'; l.action = null }
+          if (sk === 'floater') l.umbrellaOpen = 0.01;
+        } else if (sk === 'exploder')
+        {
+          if (l.et > 0) return; l.et = 300;
+        } else if (sk === 'ghost')
+        {
+          l.ghostT = 180; sndGhost();
+          if (SETTINGS.particles)
+          {
+            for (let i = 0; i < 8; i++)S.parts.push({ x: l.x, y: l.y, vx: (Math.random() - .5) * 3, vy: (Math.random() - .5) * 3, life: 20, col: '#fff', sz: 2, type: 'ghost' });
+          }
+        } else if (sk === 'rocket')
+        {
+          l.rocketT = 30; l.st = 'rocketing'; sndRocket();
+          if (SETTINGS.particles)
+          {
+            for (let i = 0; i < 10; i++)S.parts.push({ x: l.x, y: l.y + 5, vx: (Math.random() - .5) * 3, vy: Math.random() * 4 + 2, life: 20, col: Math.random() > .5 ? '#ff6b4a' : '#ffd86b', sz: 2, type: 'flame' });
+          }
+          if (SETTINGS.shake) S.shake = 5;
+        } else if (sk === 'splitter')
+        {
+          const clone = new Lem(l.x + 5, l.y); clone.f = l.f; clone.skill = l.skill;
+          S.lems.push(clone); sndSplit();
+          if (SETTINGS.particles)
+          {
+            for (let i = 0; i < 10; i++)S.parts.push({ x: l.x, y: l.y, vx: (Math.random() - .5) * 4, vy: (Math.random() - .5) * 4, life: 20, col: '#ff6bff', sz: 2, type: 'sparkle' });
+          }
+        } else
+        {
+          if (l.action === sk) return; l.action = sk;
+          if (sk === 'builder' || sk === 'bridge') l.bs = 0;
+          if (sk === 'jumper') { l.jumpT = 15; sndJump() }
+        }
+        S.skC[ sk ]--; sndAssign(); updSk();
+
+        // Flash the skill button
+        const btns = document.querySelectorAll('.sb');
+        btns.forEach(b => {
+          if (b.dataset.skill === sk)
+          {
+            b.classList.remove('flash');
+            void b.offsetWidth;
+            b.classList.add('flash');
+          }
+        });
+      }
+
+      function undo() {
+        if (!S.undo.length) return;
+        const u = S.undo.pop();
+        u.l.skill = u.os; u.l.action = u.oa;
+        S.skC[ u.sk ]++; updSk();
+        snd(300, .05, 'square');
+      }
+
+      // ============================================
+      // REWIND SYSTEM
+      // ============================================
+      function saveRewindState() {
+        const state = {
+          terrain: new Uint8Array(T),
+          lems: S.lems.map(l => ({ x: l.x, y: l.y, vx: l.vx, vy: l.vy, f: l.f, st: l.st, skill: l.skill, action: l.action, fd: l.fd, bs: l.bs, et: l.et, col: l.col, ghostT: l.ghostT, rocketT: l.rocketT, jumpT: l.jumpT, id: l.id })),
+          spawned: S.spawned, saved: S.saved, lost: S.lost, stars: S.stars, spT: S.spT
+        };
+        S.rewindBuf.push(state);
+        if (S.rewindBuf.length > 300) S.rewindBuf.shift();
+      }
+      function doRewind() {
+        if (S.rewindBuf.length < 30) return;
+        S.rewinding = true; S.rewindT = 180;
+      }
+      function applyRewind() {
+        if (S.rewindBuf.length === 0) return;
+        const state = S.rewindBuf.pop();
+        T.set(state.terrain);
+        S.lems = state.lems.map(d => { const l = new Lem(d.x, d.y); Object.assign(l, d); l.trail = []; return l });
+        S.spawned = state.spawned; S.saved = state.saved; S.lost = state.lost; S.stars = state.stars; S.spT = state.spT;
+      }
+
+      // ============================================
+      // GAME LOOP
+      // ============================================
+      function update() {
+        if (S.paused || S.over) return;
+
+        if (S.rewinding)
+        {
+          S.rewindT--; applyRewind();
+          if (S.rewindT <= 0 || S.rewindBuf.length === 0) S.rewinding = false;
+          document.getElementById('rewind-fill').style.width = (S.rewindBuf.length / 300 * 100) + '%';
+          updHUD(); return;
+        }
+
+        const steps = S.speed < 1 ? (Math.random() < S.speed ? 1 : 0) : Math.floor(S.speed);
+        for (let s = 0; s < steps; s++)
+        {
+          saveRewindState();
+          S.time--;
+          if (S.time <= 0) { endLevel(S.saved >= S.need); return }
+          S.spT++;
+          if (S.spT >= S.rate && S.spawned < S.total)
+          {
+            S.lems.push(new Lem(S.spawnP.x, S.spawnP.y));
+            S.spawned++; S.spT = 0;
+          }
+          for (const l of S.lems) l.update();
+
+          // Weather
+          if (SETTINGS.particles)
+          {
+            if (S.weather === 1 && Math.random() < 0.3) S.parts.push({ x: Math.random() * W, y: 0, vx: 0, vy: 5, life: 80, col: '#4488ff', sz: 1, type: 'rain' });
+            else if (S.weather === 2 && Math.random() < 0.2) S.parts.push({ x: Math.random() * W, y: 0, vx: Math.sin(Date.now() / 1000) * 0.5, vy: 2, life: 150, col: '#fff', sz: 2, type: 'snow' });
+          }
+
+          // Update particles
+          S.parts = S.parts.filter(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.type !== 'shockwave' && p.type !== 'grip' && p.type !== 'splat') p.vy += 0.15;
+            if (p.type === 'shockwave') p.sz += 3;
+            p.life--;
+            return p.life > 0;
+          });
+
+          const alive = S.lems.filter(l => l.st !== 'dead' && l.st !== 'exiting');
+          if (S.spawned >= S.total && alive.length === 0) { endLevel(S.saved >= S.need); return }
+        }
+        if (S.shake > 0) S.shake--;
+        if (S.flashT > 0) S.flashT--;
+        // Decay skill flashes
+        for (const k in S.skillFlash) if (S.skillFlash[ k ] > 0) S.skillFlash[ k ]--;
+        document.getElementById('rewind-fill').style.width = (S.rewindBuf.length / 300 * 100) + '%';
+        updHUD();
+      }
+
+      function endLevel(won) {
+        S.over = true;
+        if (won)
+        {
+          PROGRESS.totalSaved += S.saved;
+          PROGRESS.totalStars += S.stars;
+          if (S.maxCombo > PROGRESS.maxCombo) PROGRESS.maxCombo = S.maxCombo;
+          if (S.currentLevelIdx >= 0 && !PROGRESS.levelsCompleted.includes(S.currentLevelIdx))
+          {
+            PROGRESS.levelsCompleted.push(S.currentLevelIdx);
+          }
+          const timeLeft = Math.floor(S.time / 60);
+          const key = `lv_${S.currentLevelIdx}`;
+          if (!PROGRESS.bestTimes[ key ] || timeLeft > PROGRESS.bestTimes[ key ]) PROGRESS.bestTimes[ key ] = timeLeft;
+          saveProgress();
+        }
+
+        const m = document.getElementById('msg');
+        const t = document.getElementById('mt');
+        const b = document.getElementById('mb');
+        const extra = document.getElementById('msg-extra');
+        const btn = document.getElementById('mbtn');
+
+        if (won)
+        {
+          t.textContent = '✓ Level Complete!'; t.style.color = '#6bff8a';
+          const starsEarned = S.saved >= S.total ? 3 : S.saved >= S.need * 1.3 ? 2 : 1;
+          const timeLeft = Math.floor(S.time / 60);
+          const timeStr = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, '0')}`;
+
+          extra.innerHTML = `
+      <div class="stars-display">${'★'.repeat(starsEarned)}${'☆'.repeat(3 - starsEarned)}</div>
+      <div class="msg-stats">
+        <div class="msg-stat">Saved: <span>${S.saved}/${S.total}</span></div>
+        <div class="msg-stat">Stars: <span>${S.stars}⭐</span></div>
+        <div class="msg-stat">Lost: <span>${S.lost}</span></div>
+        <div class="msg-stat">Max Combo: <span>${S.maxCombo}×</span></div>
+        <div class="msg-stat">Time Left: <span>${timeStr}</span></div>
+      </div>
+    `;
+
+          if (S.currentLevelIdx >= 0 && S.currentLevelIdx < CAMPAIGN.length - 1)
+          {
+            btn.textContent = 'Next Level →';
+            btn.onclick = () => { m.style.display = 'none'; startLevel(S.currentLevelIdx + 1) };
+          } else
+          {
+            btn.textContent = '🏆 Continue';
+            btn.onclick = () => { m.style.display = 'none'; showScreen('title') };
+          }
+          snd(880, .2); setTimeout(() => snd(1100, .2), 100); setTimeout(() => snd(1320, .3), 200);
+        } else
+        {
+          t.textContent = '✗ Level Failed'; t.style.color = '#ff6b6b';
+          extra.innerHTML = `
+      <div class="msg-stats">
+        <div class="msg-stat">Saved: <span>${S.saved}/${S.need}</span></div>
+        <div class="msg-stat">Lost: <span>${S.lost}</span></div>
+      </div>
+    `;
+          btn.textContent = 'Retry';
+          btn.onclick = () => { m.style.display = 'none'; restartLevel() };
+        }
+        m.style.display = 'block';
+      }
+
+      // ============================================
+      // DRAWING
+      // ============================================
+      function draw() {
+        const sx = SETTINGS.shake && S.shake > 0 ? (Math.random() - .5) * S.shake : 0;
+        const sy = SETTINGS.shake && S.shake > 0 ? (Math.random() - .5) * S.shake : 0;
+        c.save(); c.translate(sx, sy);
+
+        // Sky gradient
+        const th = THEMES[ currentTheme ] || THEMES.default;
+        const g = c.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, th.sky[ 0 ]); g.addColorStop(1, th.sky[ 1 ]);
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+
+        // Parallax stars (subtle)
+        c.fillStyle = 'rgba(255,255,255,0.3)';
+        for (let i = 0; i < 30; i++)
+        {
+          const sx2 = (i * 137) % W, sy2 = (i * 91) % 200;
+          c.fillRect(sx2, sy2, 1, 1);
+        }
+
+        // Terrain
+        const id = c.createImageData(W, H), d = id.data;
+        const now = Date.now();
+        for (let y = 0; y < H; y++)for (let x = 0; x < W; x++)
+        {
+          const t = T[ y * W + x ], i = (y * W + x) * 4;
+          if (t === 1)
+          {
+            const n = ((x * 13 + y * 7) % 17) / 17;
+            d[ i ] = th.g1[ 0 ] + n * (th.g2[ 0 ] - th.g1[ 0 ]);
+            d[ i + 1 ] = th.g1[ 1 ] + n * (th.g2[ 1 ] - th.g1[ 1 ]);
+            d[ i + 2 ] = th.g1[ 2 ] + n * (th.g2[ 2 ] - th.g1[ 2 ]);
+            d[ i + 3 ] = 255;
+          } else if (t === 2)
+          {
+            const n = ((x + y) % 5) / 5;
+            d[ i ] = th.s[ 0 ] + n * 40; d[ i + 1 ] = th.s[ 1 ] + n * 40; d[ i + 2 ] = th.s[ 2 ] + n * 40; d[ i + 3 ] = 255;
+          } else if (t === 3)
+          {
+            const p = Math.sin(now / 300) * .3 + .7;
+            d[ i ] = 40; d[ i + 1 ] = 180 * p | 0; d[ i + 2 ] = 80; d[ i + 3 ] = 255;
+          } else if (t === 5)
+          {
+            const f = Math.sin(now / 100 + x * .1) * .3 + .7;
+            d[ i ] = 255 * f | 0; d[ i + 1 ] = 100 * f | 0; d[ i + 2 ] = 20; d[ i + 3 ] = 255;
+          } else if (t === 6)
+          {
+            d[ i ] = 180; d[ i + 1 ] = 180; d[ i + 2 ] = 200; d[ i + 3 ] = 255;
+          } else if (t === 7)
+          {
+            const gl = Math.sin(now / 200) * .3 + .7;
+            d[ i ] = 255 * gl | 0; d[ i + 1 ] = 216 * gl | 0; d[ i + 2 ] = 107 * gl | 0; d[ i + 3 ] = 255;
+          } else if (t === 10)
+          {
+            const w = Math.sin(now / 300 + x * .05) * .2 + .8;
+            d[ i ] = 40 * w | 0; d[ i + 1 ] = 100 * w | 0; d[ i + 2 ] = 200 * w | 0; d[ i + 3 ] = 255;
+          } else if (t === 11)
+          {
+            d[ i ] = 150; d[ i + 1 ] = 200; d[ i + 2 ] = 255; d[ i + 3 ] = 255;
+          } else if (t === 12)
+          {
+            const w = Math.sin(now / 200 + x * .1) * .3 + .7;
+            d[ i ] = 200 * w | 0; d[ i + 1 ] = 200 * w | 0; d[ i + 2 ] = 255 * w | 0; d[ i + 3 ] = 255;
+          }
+        }
+        c.putImageData(id, 0, 0);
+
+        // Spawn arrow
+        if (S.spawnP)
+        {
+          c.fillStyle = '#ffd86b';
+          c.globalAlpha = .5 + Math.sin(now / 200) * .3;
+          c.beginPath();
+          c.moveTo(S.spawnP.x, S.spawnP.y - 20);
+          c.lineTo(S.spawnP.x - 6, S.spawnP.y - 30);
+          c.lineTo(S.spawnP.x + 6, S.spawnP.y - 30);
+          c.closePath(); c.fill();
+          c.globalAlpha = 1;
+        }
+
+        // Exit label
+        if (S.exitP)
+        {
+          c.fillStyle = '#6bff8a';
+          c.font = 'bold 10px Courier New'; c.textAlign = 'center';
+          c.fillText('EXIT', S.exitP.x, S.exitP.y - 22);
+        }
+
+        // Lemmings
+        for (const l of S.lems) l.draw();
+
+        // Particles
+        if (SETTINGS.particles)
+        {
+          for (const p of S.parts)
+          {
+            c.fillStyle = p.col;
+            const alpha = p.life / (p.type === 'splat' ? 60 : p.type === 'shockwave' ? 20 : 40);
+            c.globalAlpha = Math.max(0, Math.min(1, alpha));
+            if (p.type === 'shockwave')
+            {
+              c.strokeStyle = p.col; c.lineWidth = 2;
+              c.beginPath(); c.arc(p.x, p.y, p.sz, 0, Math.PI * 2); c.stroke();
+            } else if (p.type === 'splat')
+            {
+              c.beginPath(); c.ellipse(p.x, p.y, p.sz, p.sz / 3, 0, 0, Math.PI * 2); c.fill();
+            } else if (p.type === 'grip')
+            {
+              c.fillRect(p.x, p.y, 2, 2);
+            } else
+            {
+              c.fillRect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
+            }
+          }
+          c.globalAlpha = 1;
+        }
+
+        // Selected skill indicator
+        if (S.selSk)
+        {
+          c.fillStyle = 'rgba(255,216,107,.7)';
+          c.font = 'bold 10px Courier New'; c.textAlign = 'left';
+          c.fillText(`Assign: ${SK[ S.selSk ].n}`, 10, H - 8);
+        }
+
+        // Flash overlay
+        if (S.flashT > 0)
+        {
+          c.fillStyle = S.flashColor;
+          c.globalAlpha = S.flashT / 20 * 0.2;
+          c.fillRect(0, 0, W, H);
+          c.globalAlpha = 1;
+        }
+
+        // Rewind overlay
+        if (S.rewinding)
+        {
+          c.fillStyle = 'rgba(255,107,255,0.2)'; c.fillRect(0, 0, W, H);
+          c.fillStyle = '#ff6bff';
+          c.font = 'bold 24px Courier New'; c.textAlign = 'center';
+          c.fillText('⏪ REWINDING', W / 2, H / 2);
+        }
+
+        c.restore();
+
+        // Minimap
+        mx.fillStyle = 'rgba(0,0,0,.7)'; mx.fillRect(0, 0, 140, 79);
+        const scx = 140 / W, scy = 79 / H;
+        for (let y = 0; y < H; y += 6)for (let x = 0; x < W; x += 6)
+        {
+          const t = T[ y * W + x ];
+          if (t === 1) { mx.fillStyle = '#8b6f47'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+          else if (t === 2) { mx.fillStyle = '#888'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+          else if (t === 3) { mx.fillStyle = '#6bff8a'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+          else if (t === 5) { mx.fillStyle = '#ff6b4a'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+          else if (t === 6) { mx.fillStyle = '#ccc'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+          else if (t === 10) { mx.fillStyle = '#4488ff'; mx.fillRect(x * scx, y * scy, 6 * scx, 6 * scy) }
+        }
+        for (const l of S.lems)
+        {
+          if (l.st !== 'dead' && l.st !== 'exiting')
+          {
+            mx.fillStyle = l.aiMark ? '#0fa' : l.col;
+            mx.fillRect(l.x * scx - 1, l.y * scy - 1, 2, 2);
+          }
+        }
+      }
+
+      // ============================================
+      // HUD
+      // ============================================
+      function updHUD() {
+        const s = Math.floor(S.time / 60), m = Math.floor(s / 60), ss = s % 60;
+        const te = document.getElementById('h-tm');
+        te.textContent = `${m}:${String(ss).padStart(2, '0')}`;
+        te.className = 'sv' + (s < 30 ? ' d' : '');
+        document.getElementById('h-sv').textContent = S.saved;
+        document.getElementById('h-nd').textContent = S.need;
+        document.getElementById('h-co').textContent = S.combo;
+        document.getElementById('h-q').textContent = S.total - S.spawned;
+        document.getElementById('h-lo').textContent = S.lost;
+        document.getElementById('h-st').textContent = S.stars;
+        document.getElementById('s-sv').textContent = PROGRESS.totalSaved;
+        document.getElementById('s-st').textContent = PROGRESS.totalStars;
+        document.getElementById('s-lv').textContent = PROGRESS.levelsCompleted.length + '/' + CAMPAIGN.length;
+      }
+
+      function updSk() {
+        const ct = document.getElementById('sk'); ct.innerHTML = '';
+        for (const k in SK)
+        {
+          const s = SK[ k ], b = document.createElement('button');
+          b.className = 'sb';
+          b.dataset.skill = k;
+          if (S.selSk === k) b.classList.add('sel');
+          const n = S.skC[ k ] || 0; b.disabled = n <= 0;
+          b.innerHTML = `<span class="sk">${s.k}</span><span class="si" style="color:${s.c}">${s.i}</span><span class="sn">${s.n}</span><span class="sc">×${n}</span>`;
+          b.title = s.d;
+          b.onclick = () => { if (n > 0) { S.selSk = S.selSk === k ? null : k; updSk() } };
+          ct.appendChild(b);
+        }
+      }
+
+      // ============================================
+      // INPUT
+      // ============================================
+      cv.addEventListener('click', e => {
+        initAudio();
+        const r = cv.getBoundingClientRect();
+        const mx2 = (e.clientX - r.left) * (W / r.width);
+        const my = (e.clientY - r.top) * (H / r.height);
+        let best = null, bd = 15;
+        for (const l of S.lems)
+        {
+          if (l.st === 'dead' || l.st === 'exiting') continue;
+          const d = Math.hypot(l.x - mx2, l.y - my);
+          if (d < bd) { best = l; bd = d }
+        }
+        if (S.selSk && best) assign(best, S.selSk);
+        else S.hlLem = best;
+      });
+      cv.addEventListener('contextmenu', e => { e.preventDefault(); undo() });
+
+      document.getElementById('b-pause').onclick = togglePause;
+      document.getElementById('b-rewind').onclick = doRewind;
+      document.getElementById('b-undo').onclick = undo;
+      document.getElementById('b-nuke').onclick = () => {
+        for (const l of S.lems) if (l.st !== 'dead' && l.st !== 'exiting') l.die('nuke');
+      };
+      document.getElementById('b-restart').onclick = restartLevel;
+      document.getElementById('b-menu').onclick = quitToMenu;
+      document.getElementById('b-help').onclick = showHelp;
+      document.getElementById('b-mute').onclick = () => {
+        SETTINGS.sfx = !SETTINGS.sfx;
+        document.getElementById('b-mute').textContent = SETTINGS.sfx ? '🔊' : '🔇';
+        saveSettings();
+      };
+
+      document.querySelectorAll('.spb').forEach(b => {
+        b.onclick = () => {
+          S.speed = +b.dataset.s;
+          document.querySelectorAll('.spb').forEach(x => x.classList.remove('on'));
+          b.classList.add('on');
+        };
+      });
+
+      document.addEventListener('keydown', e => {
+        if (document.getElementById('game').classList.contains('active') === false) return;
+        const km = { '1': 'floater', '2': 'blocker', '3': 'builder', '4': 'basher', '5': 'digger', '6': 'climber', '7': 'exploder', '8': 'swimmer', '9': 'jumper', '0': 'glider', 'a': 'firewalker', 's': 'spikewalker', 'd': 'ghost', 'f': 'rocket', 'g': 'splitter', 'h': 'bridge' };
+        const k = e.key.toLowerCase();
+        if (km[ k ] && S.skC[ km[ k ] ] > 0) { S.selSk = S.selSk === km[ k ] ? null : km[ k ]; updSk() }
+        else if (e.key === 'p' || e.key === 'P') togglePause();
+        else if (e.key === ' ') { e.preventDefault(); togglePause() }
+        else if (e.key === 'r' || e.key === 'R') doRewind();
+        else if (e.key === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo() }
+        else if (e.key === 'Escape')
+        {
+          if (document.getElementById('help').style.display === 'block') closeHelp();
+          else if (S.selSk) { S.selSk = null; updSk() }
+          else togglePause();
+        }
+        else if (e.key === '?') showHelp();
+      });
+
+      // Settings toggles
+      function setupToggle(id, key) {
+        const el = document.getElementById(id);
+        el.onclick = () => {
+          SETTINGS[ key ] = !SETTINGS[ key ];
+          el.classList.toggle('on', SETTINGS[ key ]);
+          saveSettings();
+        };
+      }
+      setupToggle('set-sfx', 'sfx');
+      setupToggle('set-shake', 'shake');
+      setupToggle('set-particles', 'particles');
+      setupToggle('set-trails', 'trails');
+      setupToggle('set-tutorials', 'tutorials');
+      document.getElementById('set-vol').oninput = e => {
+        SETTINGS.vol = e.target.value / 100;
+        saveSettings();
+      };
+
+      // ============================================
+      // MAIN LOOP
+      // ============================================
+      function loop() {
+        if (document.getElementById('game').classList.contains('active'))
+        {
+          update();
+          draw();
+        }
+        requestAnimationFrame(loop);
+      }
+
+      // ============================================
+      // INIT
+      // ============================================
+      loadAll();
+      document.getElementById('b-mute').textContent = SETTINGS.sfx ? '🔊' : '🔇';
+      showScreen('title');
+      loop();
+
+    })();
+  </script>
+</body>
+
+</html>
